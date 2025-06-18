@@ -1,5 +1,7 @@
+// Improved audio loading with better error handling and validation
 export async function loadAudioToBuffer(url, forceCorsProxy = false) {
-    const audioCTX = new AudioContext({ sampleRate: 16000 });
+    // Don't force sample rate - let the browser handle it naturally
+    const audioCTX = new AudioContext();
     
     const proxies = [
         { prefix: '', type: 'direct' },
@@ -8,13 +10,11 @@ export async function loadAudioToBuffer(url, forceCorsProxy = false) {
         { prefix: 'https://thingproxy.freeboard.io/fetch/', type: 'unencoded' },
         { prefix: 'https://corsproxy.org/?', type: 'encoded' },
     ];
-
-    // If forceCorsProxy is true, skip direct fetch and start with proxies
+    
     const startIndex = forceCorsProxy ? 1 : 0;
     const proxiesToTry = proxies.slice(startIndex);
-
     let lastError = null;
-
+    
     for (const proxy of proxiesToTry) {
         let fetchUrl;
         switch(proxy.type) {
@@ -28,25 +28,60 @@ export async function loadAudioToBuffer(url, forceCorsProxy = false) {
                 fetchUrl = `${proxy.prefix}${url}`;
                 break;
         }
-
+        
         try {
             console.log(`Attempting to fetch via ${proxy.type}: ${fetchUrl}`);
-            const response = await fetch(fetchUrl);
+            
+            // Add timeout to prevent hanging
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+            
+            const response = await fetch(fetchUrl, { 
+                signal: controller.signal,
+                headers: {
+                    'Accept': 'audio/*,*/*;q=0.9'
+                }
+            });
+            clearTimeout(timeoutId);
+            
             if (!response.ok) {
                 throw new Error(`HTTP status ${response.status} for ${fetchUrl}`);
             }
+            
             const arrayBuffer = await response.arrayBuffer();
-            console.log(`Successfully fetched and decoded audio via ${proxy.type}`);
-            // decodeAudioData can still throw an error for malformed data
-            return await audioCTX.decodeAudioData(arrayBuffer);
+            
+            // Validate that we actually got audio data
+            if (arrayBuffer.byteLength === 0) {
+                throw new Error('Empty audio buffer received');
+            }
+            
+            console.log(`Successfully fetched audio (${arrayBuffer.byteLength} bytes) via ${proxy.type}`);
+            
+            // Decode with error handling
+            const audioBuffer = await audioCTX.decodeAudioData(arrayBuffer);
+            
+            // Validate the decoded audio
+            if (audioBuffer.duration === 0) {
+                throw new Error('Audio buffer has zero duration');
+            }
+            
+            console.log(`Audio decoded successfully: ${audioBuffer.duration}s, ${audioBuffer.sampleRate}Hz`);
+            return audioBuffer;
+            
         } catch (error) {
             lastError = error;
-            console.warn(`Fetch/decode via ${proxy.type} failed for "${url}". Trying next fallback. Error:`, error.message);
+            console.warn(`Fetch/decode via ${proxy.type} failed for "${url}". Error:`, error.message);
+            
+            // If it's an abort error, we might want to try the next proxy immediately
+            if (error.name === 'AbortError') {
+                console.warn('Request timed out, trying next proxy...');
+                continue;
+            }
         }
     }
-
+    
     console.error(`All fetch attempts failed for url: ${url}. Last error:`, lastError);
-    throw lastError; // Throw the last captured error if all proxies fail
+    throw new Error(`Failed to load audio from all sources: ${lastError?.message || 'Unknown error'}`);
 }
 
 // Upload audio file to get URL

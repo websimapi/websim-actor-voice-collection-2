@@ -2,6 +2,63 @@ import { Transcriber } from './transcriber.js';
 import { VoiceSampleAnalyzer } from './analyzer.js';
 import { loadAudioToBuffer, uploadAudioFile } from './audio-utils.js';
 
+// Enhanced scoring function with better error handling
+export async function analyzeVoiceSampleWithTranscription(audioUrl, expectedScript, options = {}) {
+    const analyzer = new VoiceSampleAnalyzer();
+    
+    try {
+        console.log(`Starting analysis for: ${audioUrl}`);
+        
+        // Load audio with retry logic
+        let audioBuffer;
+        let transcribedText = '';
+        
+        try {
+            audioBuffer = await loadAudioToBuffer(audioUrl, options.forceCorsProxy);
+        } catch (audioError) {
+            console.error('Audio loading failed:', audioError);
+            throw new Error(`Failed to load audio: ${audioError.message}`);
+        }
+        
+        // Attempt transcription with fallback
+        try {
+            transcribedText = await Transcriber.transcribe(audioBuffer, options.transcriptionOptions);
+        } catch (transcriptionError) {
+            console.error('Transcription failed:', transcriptionError);
+            
+            // Provide fallback behavior instead of complete failure
+            if (options.allowEmptyTranscription) {
+                console.warn('Using empty transcription as fallback');
+                transcribedText = '';
+            } else {
+                throw new Error(`Transcription failed: ${transcriptionError.message}`);
+            }
+        }
+        
+        // Proceed with analysis
+        const analysis = await analyzer.analyzeVoiceSample(
+            audioBuffer, 
+            expectedScript, 
+            transcribedText, 
+            options
+        );
+        
+        // Add transcription to results for debugging
+        analysis.transcribedText = transcribedText;
+        analysis.audioInfo = {
+            duration: audioBuffer.duration,
+            sampleRate: audioBuffer.sampleRate,
+            channels: audioBuffer.numberOfChannels
+        };
+        
+        return analysis;
+        
+    } catch (error) {
+        console.error('Voice sample analysis failed:', error);
+        throw error;
+    }
+}
+
 export class VoiceCollection {
     constructor() {
         this.currentAudio = null;
@@ -141,6 +198,8 @@ export class VoiceCollection {
         const detailsBtn = document.getElementById(`details-btn-${index}`);
         
         try {
+            console.log(`Starting analysis for voice ${index}:`, voice);
+            
             // --- Part 1: Setup ---
             const initialScoreText = scoreEl.textContent;
             if (!initialScoreText.includes('%')) {
@@ -153,17 +212,18 @@ export class VoiceCollection {
                 }
             });
             
-            const analyzer = new VoiceSampleAnalyzer();
-            
             // --- Part 2: Analyze Original Sample ---
             scoreEl.innerHTML = 'Analyzing original... <div class="spinner"></div>';
-            const originalAudioBuffer = await loadAudioToBuffer(voice.file); // Direct fetch for local files
-            const originalAudioData = originalAudioBuffer.getChannelData(0);
-            console.log('Starting original transcription...');
-            const originalTranscriptionResult = await transcriber(originalAudioData, { language: 'english', task: 'transcribe' });
-            const originalTranscript = originalTranscriptionResult.text.trim();
-            console.log('Original transcription completed:', originalTranscript);
-            const originalAnalysis = await analyzer.analyzeVoiceSample(originalAudioBuffer, voice.script, originalTranscript, { isTTSAnalysis: false });
+            
+            const originalAnalysis = await analyzeVoiceSampleWithTranscription(
+                voice.file, 
+                voice.script, 
+                { 
+                    forceCorsProxy: false,
+                    isTTSAnalysis: false,
+                    allowEmptyTranscription: false
+                }
+            );
 
             // --- Part 3: Generate and Analyze TTS Clone ---
             scoreEl.innerHTML = 'Generating clone... <div class="spinner"></div>';
@@ -173,28 +233,25 @@ export class VoiceCollection {
                 voice_sample: voiceUrl
             });
 
-            // --- New: Add audio player for the generated clone ---
+            // --- Add audio player for the generated clone ---
             const ttsAudioContainer = document.getElementById(`tts-audio-player-container-${index}`);
             if (ttsAudioContainer) {
                 const ttsAudioPlayer = ttsAudioContainer.querySelector('audio');
                 ttsAudioPlayer.src = ttsResult.url;
                 ttsAudioContainer.style.display = 'block';
             }
-            // --------------------------------------------------------
 
             scoreEl.innerHTML = 'Analyzing clone... <div class="spinner"></div>';
             
-            // Re-initialize the transcriber to ensure a clean state for the second analysis
-            const ttsTranscriber = await Transcriber.getNewInstance();
-
-            console.log('Fetching TTS audio buffer with CORS proxy...');
-            const ttsAudioBuffer = await loadAudioToBuffer(ttsResult.url, true); // Force CORS proxy for TTS URLs
-            const ttsAudioData = ttsAudioBuffer.getChannelData(0);
-            console.log('Starting TTS transcription...');
-            const ttsTranscriptionResult = await ttsTranscriber(ttsAudioData, { language: 'english', task: 'transcribe' });
-            const ttsTranscript = ttsTranscriptionResult.text.trim();
-            console.log('TTS transcription completed:', ttsTranscript);
-            const ttsAnalysis = await analyzer.analyzeVoiceSample(ttsAudioBuffer, voice.script, ttsTranscript, { isTTSAnalysis: true });
+            const ttsAnalysis = await analyzeVoiceSampleWithTranscription(
+                ttsResult.url, 
+                voice.script, 
+                { 
+                    forceCorsProxy: true, // Always use CORS proxy for TTS URLs
+                    isTTSAnalysis: true,
+                    allowEmptyTranscription: true // Allow fallback for TTS analysis
+                }
+            );
 
             // --- Part 4: Combine and Display Results ---
             const combinedScore = Math.round((originalAnalysis.overallScore * 0.6) + (ttsAnalysis.overallScore * 0.4));
@@ -208,12 +265,12 @@ export class VoiceCollection {
 
             // Populate details for original sample
             document.getElementById(`original-score-${index}`).textContent = `${originalAnalysis.overallScore} / 100`;
-            document.getElementById(`transcribed-text-${index}`).textContent = `"${originalTranscript || '...'}"`;
+            document.getElementById(`transcribed-text-${index}`).textContent = `"${originalAnalysis.transcribedText || '...'}"`;
             document.getElementById(`detailed-scores-${index}`).innerHTML = this.formatDetailedScores(originalAnalysis.detailedScores, originalAnalysis.weightsUsed);
             
             // Populate details for TTS clone
             document.getElementById(`tts-score-${index}`).textContent = `${ttsAnalysis.overallScore} / 100`;
-            document.getElementById(`tts-transcribed-text-${index}`).textContent = `"${ttsTranscript || '...'}"`;
+            document.getElementById(`tts-transcribed-text-${index}`).textContent = `"${ttsAnalysis.transcribedText || '...'}"`;
             document.getElementById(`tts-detailed-scores-${index}`).innerHTML = this.formatDetailedScores(ttsAnalysis.detailedScores, ttsAnalysis.weightsUsed);
 
             // Combine insights
@@ -230,6 +287,8 @@ export class VoiceCollection {
             }
 
             if(detailsBtn) detailsBtn.style.display = 'inline-block';
+            
+            console.log(`Analysis completed for voice ${index}:`, { originalAnalysis, ttsAnalysis, combinedScore });
 
         } catch (e) {
             console.error(`Error analyzing ${voice.title}:`, e);
@@ -250,7 +309,7 @@ export class VoiceCollection {
         this.analysisInProgress = true;
         const analyzeBtn = document.getElementById('analyze-btn');
         analyzeBtn.disabled = true;
-        analyzeBtn.innerHTML = 'Analyzing... <div class="spinner"></div';
+        analyzeBtn.innerHTML = 'Analyzing... <div class="spinner"></div>';
 
         try {
             for (const [i, voice] of voices.entries()) {
@@ -268,8 +327,6 @@ export class VoiceCollection {
                     }
                 }
             });
-            
-            const analyzer = new VoiceSampleAnalyzer();
 
             for (const [i, voice] of voices.entries()) {
                 const button = document.getElementById(`analyze-one-btn-${i}`);
@@ -279,15 +336,20 @@ export class VoiceCollection {
                 const detailsBtn = document.getElementById(`details-btn-${i}`);
                 
                 try {
+                    console.log(`Starting batch analysis for voice ${i}:`, voice);
+                    
                     // --- Part 2: Analyze Original Sample ---
                     scoreEl.innerHTML = 'Analyzing original... <div class="spinner"></div>';
-                    const originalAudioBuffer = await loadAudioToBuffer(voice.file); // Direct fetch for local files
-                    const originalAudioData = originalAudioBuffer.getChannelData(0);
-                    console.log(`Starting original transcription for ${voice.title}...`);
-                    const originalTranscriptionResult = await transcriber(originalAudioData, { language: 'english', task: 'transcribe' });
-                    const originalTranscript = originalTranscriptionResult.text.trim();
-                    console.log(`Original transcription completed for ${voice.title}:`, originalTranscript);
-                    const originalAnalysis = await analyzer.analyzeVoiceSample(originalAudioBuffer, voice.script, originalTranscript, { isTTSAnalysis: false });
+                    
+                    const originalAnalysis = await analyzeVoiceSampleWithTranscription(
+                        voice.file, 
+                        voice.script, 
+                        { 
+                            forceCorsProxy: false,
+                            isTTSAnalysis: false,
+                            allowEmptyTranscription: false
+                        }
+                    );
 
                     // --- Part 3: Generate and Analyze TTS Clone ---
                     scoreEl.innerHTML = 'Generating clone... <div class="spinner"></div>';
@@ -297,28 +359,25 @@ export class VoiceCollection {
                         voice_sample: voiceUrl
                     });
 
-                    // --- New: Add audio player for the generated clone ---
+                    // --- Add audio player for the generated clone ---
                     const ttsAudioContainer = document.getElementById(`tts-audio-player-container-${i}`);
                     if (ttsAudioContainer) {
                         const ttsAudioPlayer = ttsAudioContainer.querySelector('audio');
                         ttsAudioPlayer.src = ttsResult.url;
                         ttsAudioContainer.style.display = 'block';
                     }
-                    // --------------------------------------------------------
 
                     scoreEl.innerHTML = 'Analyzing clone... <div class="spinner"></div>';
-
-                    // Re-initialize a fresh transcriber for the clone analysis
-                    const ttsTranscriber = await Transcriber.getNewInstance();
-
-                    console.log(`Fetching TTS audio buffer with CORS proxy for ${voice.title}...`);
-                    const ttsAudioBuffer = await loadAudioToBuffer(ttsResult.url, true); // Force CORS proxy for TTS URLs
-                    const ttsAudioData = ttsAudioBuffer.getChannelData(0);
-                    console.log(`Starting TTS transcription for ${voice.title}...`);
-                    const ttsTranscriptionResult = await ttsTranscriber(ttsAudioData, { language: 'english', task: 'transcribe' });
-                    const ttsTranscript = ttsTranscriptionResult.text.trim();
-                    console.log(`TTS transcription completed for ${voice.title}:`, ttsTranscript);
-                    const ttsAnalysis = await analyzer.analyzeVoiceSample(ttsAudioBuffer, voice.script, ttsTranscript, { isTTSAnalysis: true });
+                    
+                    const ttsAnalysis = await analyzeVoiceSampleWithTranscription(
+                        ttsResult.url, 
+                        voice.script, 
+                        { 
+                            forceCorsProxy: true, // Always use CORS proxy for TTS URLs
+                            isTTSAnalysis: true,
+                            allowEmptyTranscription: true // Allow fallback for TTS analysis
+                        }
+                    );
 
                     // --- Part 4: Combine and Display Results ---
                     const combinedScore = Math.round((originalAnalysis.overallScore * 0.6) + (ttsAnalysis.overallScore * 0.4));
@@ -332,12 +391,12 @@ export class VoiceCollection {
 
                     // Populate details for original sample
                     document.getElementById(`original-score-${i}`).textContent = `${originalAnalysis.overallScore} / 100`;
-                    document.getElementById(`transcribed-text-${i}`).textContent = `"${originalTranscript || '...'}"`;
+                    document.getElementById(`transcribed-text-${i}`).textContent = `"${originalAnalysis.transcribedText || '...'}"`;
                     document.getElementById(`detailed-scores-${i}`).innerHTML = this.formatDetailedScores(originalAnalysis.detailedScores, originalAnalysis.weightsUsed);
                     
                     // Populate details for TTS clone
                     document.getElementById(`tts-score-${i}`).textContent = `${ttsAnalysis.overallScore} / 100`;
-                    document.getElementById(`tts-transcribed-text-${i}`).textContent = `"${ttsTranscript || '...'}"`;
+                    document.getElementById(`tts-transcribed-text-${i}`).textContent = `"${ttsAnalysis.transcribedText || '...'}"`;
                     document.getElementById(`tts-detailed-scores-${i}`).innerHTML = this.formatDetailedScores(ttsAnalysis.detailedScores, ttsAnalysis.weightsUsed);
 
                     // Combine insights
@@ -354,6 +413,8 @@ export class VoiceCollection {
                     }
                     
                     if(detailsBtn) detailsBtn.style.display = 'inline-block';
+                    
+                    console.log(`Batch analysis completed for voice ${i}:`, { originalAnalysis, ttsAnalysis, combinedScore });
 
                 } catch (e) {
                     console.error(`Error analyzing ${voice.title}:`, e);
