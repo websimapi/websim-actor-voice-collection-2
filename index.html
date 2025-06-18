@@ -804,28 +804,6 @@
             }
         }
 
-        // Helper function to upload TTS result to websim storage
-        async function uploadTTSResult(ttsUrl) {
-            try {
-                const response = await fetch(ttsUrl);
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                const blob = await response.blob();
-                
-                // Create a File object with a unique name
-                const filename = `tts_clone_${Date.now()}.wav`;
-                const file = new File([blob], filename, { type: 'audio/wav' });
-                
-                // Upload to websim storage
-                const url = await websim.upload(file);
-                return url;
-            } catch (error) {
-                console.error('Error uploading TTS result:', error);
-                throw error;
-            }
-        }
-
         function createVoiceCard(voice, index) {
             return `
                 <div class="voice-card" id="voice-card-${index}">
@@ -985,15 +963,10 @@
                     voice_sample: voiceUrl
                 });
 
-                scoreEl.innerHTML = 'Uploading TTS clone... <div class="spinner"></div>';
-                
-                // Upload TTS result to websim storage to avoid CORS issues
-                const ttsStorageUrl = await uploadTTSResult(ttsResult.url);
-
                 scoreEl.innerHTML = 'Analyzing TTS clone... <div class="spinner"></div>';
 
-                // Analyze the generated TTS using the uploaded URL
-                const ttsResponse = await fetch(ttsStorageUrl);
+                // Analyze the generated TTS
+                const ttsResponse = await fetch(ttsResult.url);
                 const ttsArrayBuffer = await ttsResponse.arrayBuffer();
                 const ttsAudioBuffer = await audioCTX.decodeAudioData(ttsArrayBuffer);
                 const ttsAudioData = ttsAudioBuffer.getChannelData(0);
@@ -1483,15 +1456,10 @@
                             voice_sample: voiceUrl
                         });
 
-                        scoreEl.innerHTML = 'Uploading TTS clone... <div class="spinner"></div>';
-                        
-                        // Upload TTS result to websim storage to avoid CORS issues
-                        const ttsStorageUrl = await uploadTTSResult(ttsResult.url);
-
                         scoreEl.innerHTML = 'Analyzing TTS clone... <div class="spinner"></div>';
 
-                        // Analyze the generated TTS using the uploaded URL
-                        const ttsResponse = await fetch(ttsStorageUrl);
+                        // Analyze the generated TTS
+                        const ttsResponse = await fetch(ttsResult.url);
                         const ttsArrayBuffer = await ttsResponse.arrayBuffer();
                         const ttsAudioBuffer = await audioCTX.decodeAudioData(ttsArrayBuffer);
                         const ttsAudioData = ttsAudioBuffer.getChannelData(0);
