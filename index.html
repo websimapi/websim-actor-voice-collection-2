@@ -806,7 +806,27 @@
 
         async function loadAudioToBuffer(url) {
             const audioCTX = new AudioContext({ sampleRate: 16000 });
-            const response = await fetch(url);
+            let response;
+
+            try {
+                // Attempt 1: Direct fetch
+                response = await fetch(url);
+            } catch (error) {
+                // This catch block is triggered by network errors, including CORS rejections.
+                console.warn(`Direct fetch for "${url}" failed. Retrying with CORS proxy. Error: ${error.message}`);
+                const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
+                try {
+                    response = await fetch(proxyUrl);
+                } catch (proxyError) {
+                    console.error(`CORS proxy fetch also failed for "${url}":`, proxyError);
+                    throw proxyError; // Re-throw the proxy error
+                }
+            }
+
+            if (!response.ok) {
+                throw new Error(`Failed to fetch audio from ${response.url} (status: ${response.status})`);
+            }
+
             const arrayBuffer = await response.arrayBuffer();
             return audioCTX.decodeAudioData(arrayBuffer);
         }
