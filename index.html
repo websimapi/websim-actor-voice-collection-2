@@ -1184,7 +1184,7 @@
                 return {
                     overallScore: Math.round(weightedScore * 100),
                     detailedScores: scores,
-                    insights: this.generateInsights(scores, transcribedText)
+                    insights: this.generateInsights(scores, transcribedText, expectedScript)
                 };
             }
 
@@ -1379,7 +1379,7 @@
                 return Math.max(0.5, 1 - (duration - 30) / 60);
             }
 
-            generateInsights(scores, transcribedText) {
+            generateInsights(scores, transcribedText, expectedScript) {
                 const insights = [];
                 if (scores.transcriptAccuracy < 0.8) insights.push("Clearer pronunciation would improve transcript accuracy.");
                 if (scores.audioQuality < 0.7) insights.push("Audio quality could be improved (check for noise/clipping).");
