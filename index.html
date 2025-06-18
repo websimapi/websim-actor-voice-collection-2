@@ -961,12 +961,29 @@
                 const voiceUrl = await uploadAudioFile(voice.file);
                 const ttsResult = await websim.textToSpeech({
                     text: voice.script,
-                    voice_sample: voiceUrl,
-                    output_upload: 'v1' // Automatically upload the result to avoid CORS issues
+                    voice_sample: voiceUrl
                 });
 
-                const ttsResponse = await fetch(ttsResult.url);
-                const ttsArrayBuffer = await ttsResponse.arrayBuffer();
+                // Create an audio element to load the data, avoiding direct fetch CORS issues.
+                const tempAudio = new Audio();
+                tempAudio.crossOrigin = "anonymous";
+                tempAudio.src = ttsResult.url;
+                
+                const ttsArrayBuffer = await new Promise((resolve, reject) => {
+                    tempAudio.addEventListener('canplaythrough', async () => {
+                        // Once the audio is loaded, fetch it again. It should be cached by the browser,
+                        // and this time the fetch will succeed without a CORS error.
+                        try {
+                            const response = await fetch(ttsResult.url);
+                            const buffer = await response.arrayBuffer();
+                            resolve(buffer);
+                        } catch(e) {
+                            reject(e);
+                        }
+                    });
+                    tempAudio.addEventListener('error', (e) => reject(new Error("Failed to load generated audio for analysis.")));
+                });
+                
                 const ttsAudioBuffer = await audioCTX.decodeAudioData(ttsArrayBuffer);
 
                 const ttsAudioData = ttsAudioBuffer.getChannelData(0);
