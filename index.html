@@ -1044,11 +1044,13 @@
                     scoreEl.innerHTML = 'Loading model...';
                 }
 
+                console.log('[Setup] Getting transcriber instance...');
                 const transcriber = await Transcriber.getInstance((progress) => {
                     if (!initialScoreText.includes('%')) {
                         scoreEl.textContent = `Loading model... ${Math.round(progress.progress)}%`;
                     }
                 });
+                console.log('[Setup] Transcriber instance ready.');
                 
                 const analyzer = new VoiceSampleAnalyzer();
                 
@@ -1056,8 +1058,14 @@
                 scoreEl.innerHTML = 'Analyzing original... <div class="spinner"></div>';
                 const originalAudioBuffer = await loadAudioToBuffer(voice.file);
                 const originalAudioData = originalAudioBuffer.getChannelData(0);
+
+                console.log(`[Transcription] Starting transcription for original audio: ${voice.title}`);
+                scoreEl.innerHTML = 'Transcribing original... <div class="spinner"></div>';
                 const originalTranscriptionResult = await transcriber(originalAudioData, { language: 'english', task: 'transcribe' });
+                console.log(`[Transcription] Finished transcription for original audio. Result:`, originalTranscriptionResult);
                 const originalTranscript = originalTranscriptionResult.text.trim();
+                console.log(`[Transcription] Extracted transcript: "${originalTranscript}"`);
+
                 const originalAnalysis = await analyzer.analyzeVoiceSample(originalAudioBuffer, voice.script, originalTranscript, { isTTSAnalysis: false });
 
                 // --- Part 3: Generate and Analyze TTS Clone ---
@@ -1080,8 +1088,14 @@
                 scoreEl.innerHTML = 'Analyzing clone... <div class="spinner"></div>';
                 const ttsAudioBuffer = await loadAudioToBuffer(ttsResult.url);
                 const ttsAudioData = ttsAudioBuffer.getChannelData(0);
+
+                console.log(`[Transcription] Starting transcription for TTS clone: ${voice.title}`);
+                scoreEl.innerHTML = 'Transcribing clone... <div class="spinner"></div>';
                 const ttsTranscriptionResult = await transcriber(ttsAudioData, { language: 'english', task: 'transcribe' });
+                console.log(`[Transcription] Finished transcription for TTS clone. Result:`, ttsTranscriptionResult);
                 const ttsTranscript = ttsTranscriptionResult.text.trim();
+                console.log(`[Transcription] Extracted transcript for TTS clone: "${ttsTranscript}"`);
+                
                 const ttsAnalysis = await analyzer.analyzeVoiceSample(ttsAudioBuffer, voice.script, ttsTranscript, { isTTSAnalysis: true });
 
                 // --- Part 4: Combine and Display Results ---
@@ -1107,7 +1121,7 @@
                 // Combine insights
                 const combinedInsights = [
                     ...originalAnalysis.insights, 
-                    ...ttsAnalysis.insights.map(i => `[TTS Clone] ${i}`)
+                    ...ttsAnalysis.insights.map(insight => `[TTS Clone] ${insight}`)
                 ];
                 const uniqueInsights = [...new Set(combinedInsights)];
                 const insightsContainer = document.getElementById(`insights-${index}`);
@@ -1116,7 +1130,7 @@
                 } else {
                     insightsContainer.innerHTML = '<ul><li>✅ Looks great! This is a high-quality sample.</li></ul>';
                 }
-
+                
                 if(detailsBtn) detailsBtn.style.display = 'inline-block';
 
             } catch (e) {
@@ -1509,6 +1523,7 @@
                     }
                 }
 
+                console.log('[Setup] Getting transcriber instance...');
                 const transcriber = await Transcriber.getInstance((progress) => {
                      for (const [i, voice] of voices.entries()) {
                         const scoreEl = document.getElementById(`score-value-${i}`);
@@ -1517,6 +1532,7 @@
                         }
                     }
                 });
+                console.log('[Setup] Transcriber instance ready.');
                 
                 const analyzer = new VoiceSampleAnalyzer();
 
@@ -1532,8 +1548,14 @@
                         scoreEl.innerHTML = 'Analyzing original... <div class="spinner"></div>';
                         const originalAudioBuffer = await loadAudioToBuffer(voice.file);
                         const originalAudioData = originalAudioBuffer.getChannelData(0);
+
+                        console.log(`[Transcription] Starting transcription for original audio: ${voice.title}`);
+                        scoreEl.innerHTML = 'Transcribing original... <div class="spinner"></div>';
                         const originalTranscriptionResult = await transcriber(originalAudioData, { language: 'english', task: 'transcribe' });
+                        console.log(`[Transcription] Finished transcription for original audio. Result:`, originalTranscriptionResult);
                         const originalTranscript = originalTranscriptionResult.text.trim();
+                        console.log(`[Transcription] Extracted transcript: "${originalTranscript}"`);
+
                         const originalAnalysis = await analyzer.analyzeVoiceSample(originalAudioBuffer, voice.script, originalTranscript, { isTTSAnalysis: false });
 
                         // --- Part 3: Generate and Analyze TTS Clone ---
@@ -1556,8 +1578,14 @@
                         scoreEl.innerHTML = 'Analyzing clone... <div class="spinner"></div>';
                         const ttsAudioBuffer = await loadAudioToBuffer(ttsResult.url);
                         const ttsAudioData = ttsAudioBuffer.getChannelData(0);
+
+                        console.log(`[Transcription] Starting transcription for TTS clone: ${voice.title}`);
+                        scoreEl.innerHTML = 'Transcribing clone... <div class="spinner"></div>';
                         const ttsTranscriptionResult = await transcriber(ttsAudioData, { language: 'english', task: 'transcribe' });
+                        console.log(`[Transcription] Finished transcription for TTS clone. Result:`, ttsTranscriptionResult);
                         const ttsTranscript = ttsTranscriptionResult.text.trim();
+                        console.log(`[Transcription] Extracted transcript for TTS clone: "${ttsTranscript}"`);
+
                         const ttsAnalysis = await analyzer.analyzeVoiceSample(ttsAudioBuffer, voice.script, ttsTranscript, { isTTSAnalysis: true });
 
                         // --- Part 4: Combine and Display Results ---
