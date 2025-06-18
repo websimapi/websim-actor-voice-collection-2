@@ -815,7 +815,7 @@
             }
         }
 
-        async function loadAudioToBuffer(url) {
+        async function loadAudioToBuffer(url, forceCorsProxy = false) {
             const audioCTX = new AudioContext({ sampleRate: 16000 });
             
             const proxies = [
@@ -825,10 +825,14 @@
                 { prefix: 'https://thingproxy.freeboard.io/fetch/', type: 'unencoded' },
                 { prefix: 'https://corsproxy.org/?', type: 'encoded' },
             ];
+
+            // If forceCorsProxy is true, skip direct fetch and start with proxies
+            const startIndex = forceCorsProxy ? 1 : 0;
+            const proxiesToTry = proxies.slice(startIndex);
         
             let lastError = null;
         
-            for (const proxy of proxies) {
+            for (const proxy of proxiesToTry) {
                 let fetchUrl;
                 switch(proxy.type) {
                     case 'direct':
@@ -843,11 +847,13 @@
                 }
 
                 try {
+                    console.log(`Attempting to fetch via ${proxy.type}: ${fetchUrl}`);
                     const response = await fetch(fetchUrl);
                     if (!response.ok) {
                         throw new Error(`HTTP status ${response.status} for ${fetchUrl}`);
                     }
                     const arrayBuffer = await response.arrayBuffer();
+                    console.log(`Successfully fetched and decoded audio via ${proxy.type}`);
                     // decodeAudioData can still throw an error for malformed data
                     return await audioCTX.decodeAudioData(arrayBuffer);
                 } catch (error) {
@@ -1026,10 +1032,12 @@
                 
                 // --- Part 2: Analyze Original Sample ---
                 scoreEl.innerHTML = 'Analyzing original... <div class="spinner"></div>';
-                const originalAudioBuffer = await loadAudioToBuffer(voice.file);
+                const originalAudioBuffer = await loadAudioToBuffer(voice.file); // Direct fetch for local files
                 const originalAudioData = originalAudioBuffer.getChannelData(0);
+                console.log('Starting original transcription...');
                 const originalTranscriptionResult = await transcriber(originalAudioData, { language: 'english', task: 'transcribe' });
                 const originalTranscript = originalTranscriptionResult.text.trim();
+                console.log('Original transcription completed:', originalTranscript);
                 const originalAnalysis = await analyzer.analyzeVoiceSample(originalAudioBuffer, voice.script, originalTranscript, { isTTSAnalysis: false });
 
                 // --- Part 3: Generate and Analyze TTS Clone ---
@@ -1054,10 +1062,13 @@
                 // Re-initialize the transcriber to ensure a clean state for the second analysis
                 const ttsTranscriber = await Transcriber.getNewInstance();
 
-                const ttsAudioBuffer = await loadAudioToBuffer(ttsResult.url);
+                console.log('Fetching TTS audio buffer with CORS proxy...');
+                const ttsAudioBuffer = await loadAudioToBuffer(ttsResult.url, true); // Force CORS proxy for TTS URLs
                 const ttsAudioData = ttsAudioBuffer.getChannelData(0);
+                console.log('Starting TTS transcription...');
                 const ttsTranscriptionResult = await ttsTranscriber(ttsAudioData, { language: 'english', task: 'transcribe' });
                 const ttsTranscript = ttsTranscriptionResult.text.trim();
+                console.log('TTS transcription completed:', ttsTranscript);
                 const ttsAnalysis = await analyzer.analyzeVoiceSample(ttsAudioBuffer, voice.script, ttsTranscript, { isTTSAnalysis: true });
 
                 // --- Part 4: Combine and Display Results ---
@@ -1510,10 +1521,12 @@
                     try {
                         // --- Part 2: Analyze Original Sample ---
                         scoreEl.innerHTML = 'Analyzing original... <div class="spinner"></div>';
-                        const originalAudioBuffer = await loadAudioToBuffer(voice.file);
+                        const originalAudioBuffer = await loadAudioToBuffer(voice.file); // Direct fetch for local files
                         const originalAudioData = originalAudioBuffer.getChannelData(0);
+                        console.log(`Starting original transcription for ${voice.title}...`);
                         const originalTranscriptionResult = await transcriber(originalAudioData, { language: 'english', task: 'transcribe' });
                         const originalTranscript = originalTranscriptionResult.text.trim();
+                        console.log(`Original transcription completed for ${voice.title}:`, originalTranscript);
                         const originalAnalysis = await analyzer.analyzeVoiceSample(originalAudioBuffer, voice.script, originalTranscript, { isTTSAnalysis: false });
 
                         // --- Part 3: Generate and Analyze TTS Clone ---
@@ -1538,10 +1551,13 @@
                         // Re-initialize a fresh transcriber for the clone analysis
                         const ttsTranscriber = await Transcriber.getNewInstance();
 
-                        const ttsAudioBuffer = await loadAudioToBuffer(ttsResult.url);
+                        console.log(`Fetching TTS audio buffer with CORS proxy for ${voice.title}...`);
+                        const ttsAudioBuffer = await loadAudioToBuffer(ttsResult.url, true); // Force CORS proxy for TTS URLs
                         const ttsAudioData = ttsAudioBuffer.getChannelData(0);
+                        console.log(`Starting TTS transcription for ${voice.title}...`);
                         const ttsTranscriptionResult = await ttsTranscriber(ttsAudioData, { language: 'english', task: 'transcribe' });
                         const ttsTranscript = ttsTranscriptionResult.text.trim();
+                        console.log(`TTS transcription completed for ${voice.title}:`, ttsTranscript);
                         const ttsAnalysis = await analyzer.analyzeVoiceSample(ttsAudioBuffer, voice.script, ttsTranscript, { isTTSAnalysis: true });
 
                         // --- Part 4: Combine and Display Results ---
