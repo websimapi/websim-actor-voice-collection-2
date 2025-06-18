@@ -819,18 +819,30 @@
             const audioCTX = new AudioContext({ sampleRate: 16000 });
             
             const proxies = [
-                '', // Attempt direct fetch first
-                'https://corsproxy.io/?',
-                'https://api.allorigins.win/raw?url=',
-                'https://thingproxy.freeboard.io/fetch/'
+                { prefix: '', type: 'direct' },
+                { prefix: 'https://corsproxy.io/?', type: 'encoded' },
+                { prefix: 'https://api.allorigins.win/raw?url=', type: 'encoded' },
+                { prefix: 'https://thingproxy.freeboard.io/fetch/', type: 'unencoded' },
+                { prefix: 'https://corsproxy.org/?', type: 'encoded' },
             ];
         
             let lastError = null;
         
             for (const proxy of proxies) {
-                const fetchUrl = proxy ? `${proxy}${encodeURIComponent(url)}` : url;
+                let fetchUrl;
+                switch(proxy.type) {
+                    case 'direct':
+                        fetchUrl = url;
+                        break;
+                    case 'encoded':
+                        fetchUrl = `${proxy.prefix}${encodeURIComponent(url)}`;
+                        break;
+                    case 'unencoded':
+                        fetchUrl = `${proxy.prefix}${url}`;
+                        break;
+                }
+
                 try {
-                    // console.log(`Attempting to fetch audio from: ${fetchUrl}`);
                     const response = await fetch(fetchUrl);
                     if (!response.ok) {
                         throw new Error(`HTTP status ${response.status} for ${fetchUrl}`);
@@ -840,7 +852,7 @@
                     return await audioCTX.decodeAudioData(arrayBuffer);
                 } catch (error) {
                     lastError = error;
-                    console.warn(`Fetch/decode failed for "${fetchUrl}". Trying next fallback. Error:`, error.message);
+                    console.warn(`Fetch/decode via ${proxy.type} failed for "${url}". Trying next fallback. Error:`, error.message);
                 }
             }
         
@@ -1040,11 +1052,11 @@
                 scoreEl.innerHTML = 'Analyzing clone... <div class="spinner"></div>';
                 
                 // Re-initialize the transcriber to ensure a clean state for the second analysis
-                transcriber = await Transcriber.getNewInstance();
+                const ttsTranscriber = await Transcriber.getNewInstance();
 
                 const ttsAudioBuffer = await loadAudioToBuffer(ttsResult.url);
                 const ttsAudioData = ttsAudioBuffer.getChannelData(0);
-                const ttsTranscriptionResult = await transcriber(ttsAudioData, { language: 'english', task: 'transcribe' });
+                const ttsTranscriptionResult = await ttsTranscriber(ttsAudioData, { language: 'english', task: 'transcribe' });
                 const ttsTranscript = ttsTranscriptionResult.text.trim();
                 const ttsAnalysis = await analyzer.analyzeVoiceSample(ttsAudioBuffer, voice.script, ttsTranscript, { isTTSAnalysis: true });
 
