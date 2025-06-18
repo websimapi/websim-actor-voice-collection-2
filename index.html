@@ -309,9 +309,10 @@
         .card-buttons {
             display: flex;
             gap: 10px;
+            margin-top: auto; /* Pushes buttons to the bottom */
         }
 
-        .play-button, .use-tts-button {
+        .play-button, .use-tts-button, .analyze-one-button {
             border: none;
             border-radius: 25px;
             padding: 12px 0;
@@ -321,6 +322,10 @@
             transition: all 0.3s ease;
             width: 100%;
             font-size: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
         }
 
         .play-button {
@@ -331,11 +336,15 @@
             background: linear-gradient(45deg, #487fee, #3259a8);
         }
 
-        .play-button:hover, .use-tts-button:hover {
+        .analyze-one-button {
+             background: linear-gradient(45deg, #1abc9c, #16a085);
+        }
+
+        .play-button:hover, .use-tts-button:hover, .analyze-one-button:hover {
             transform: scale(1.05);
         }
         
-        .play-button:active, .use-tts-button:active {
+        .play-button:active, .use-tts-button:active, .analyze-one-button:active {
             transform: scale(0.98);
         }
         
@@ -818,7 +827,10 @@
                             ▶ Play
                         </button>
                         <button class="use-tts-button" onclick="selectForTTSFromCard('${voice.file}', '${voice.title}', ${index})">
-                            🎙️ Use for TTS
+                            🎙️ Use
+                        </button>
+                        <button class="analyze-one-button" id="analyze-one-btn-${index}" onclick="analyzeSingleVoice(${index})">
+                            🔍 Analyze
                         </button>
                     </div>
                 </div>
@@ -898,6 +910,86 @@
             document.getElementById(`voice-card-${index}`).classList.add('selected');
         }
         window.selectForTTSFromCard = selectForTTSFromCard;
+
+        async function analyzeSingleVoice(index) {
+            if (analysisInProgress) {
+                alert("Another analysis is already in progress. Please wait.");
+                return;
+            }
+            analysisInProgress = true;
+            
+            const button = document.getElementById(`analyze-one-btn-${index}`);
+            button.disabled = true;
+            button.innerHTML = 'Analyzing... <div class="spinner"></div>';
+            
+            const voice = voices[index];
+            const scoreEl = document.getElementById(`score-value-${index}`);
+            const detailsBtn = document.getElementById(`details-btn-${index}`);
+            
+            try {
+                const initialScoreText = scoreEl.textContent;
+                if (!initialScoreText.includes('%')) {
+                    scoreEl.innerHTML = 'Loading model...';
+                }
+
+                const transcriber = await Transcriber.getInstance((progress) => {
+                    if (!initialScoreText.includes('%')) {
+                        scoreEl.textContent = `Loading model... ${Math.round(progress.progress)}%`;
+                    }
+                });
+                
+                const analyzer = new VoiceSampleAnalyzer();
+                
+                scoreEl.innerHTML = 'Analyzing... <div class="spinner"></div>';
+
+                const audioCTX = new AudioContext({ sampleRate: 16000 });
+                const response = await fetch(voice.file);
+                const arrayBuffer = await response.arrayBuffer();
+                const audioBuffer = await audioCTX.decodeAudioData(arrayBuffer);
+                
+                const audioData = audioBuffer.getChannelData(0);
+                
+                const result = await transcriber(audioData, { language: 'english', task: 'transcribe' });
+                const transcript = result.text.trim();
+                
+                const analysis = await analyzer.analyzeVoiceSample(audioBuffer, voice.script, transcript);
+
+                document.getElementById(`transcribed-text-${index}`).textContent = `"${transcript}"`;
+                scoreEl.textContent = `${analysis.overallScore} / 100`;
+                scoreEl.classList.add('analyzed');
+
+                if (analysis.overallScore > 80) scoreEl.style.color = '#2ecc71';
+                else if (analysis.overallScore > 60) scoreEl.style.color = '#f1c40f';
+                else scoreEl.style.color = '#e74c3c';
+                
+                const insightsContainer = document.getElementById(`insights-${index}`);
+                if(analysis.insights.length > 0) {
+                    insightsContainer.innerHTML = '<ul>' + analysis.insights.map(insight => `<li>${insight}</li>`).join('') + '</ul>';
+                } else {
+                    insightsContainer.innerHTML = '<ul><li>✅ Looks great! This is a high-quality sample.</li></ul>';
+                }
+
+                const detailsContainer = document.getElementById(`detailed-scores-${index}`);
+                detailsContainer.innerHTML = Object.entries(analysis.detailedScores).map(([key, value]) => {
+                    const name = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+                    const score = (value * 100).toFixed(1);
+                    const weight = (analyzer.weights[key] * 100);
+                    return `<li>${name.padEnd(22, ' ')}: ${score.padStart(5)} / 100 (weight: ${weight}%)</li>`;
+                }).join('');
+
+                if(detailsBtn) detailsBtn.style.display = 'inline-block';
+
+            } catch (e) {
+                console.error(`Error analyzing ${voice.title}:`, e);
+                scoreEl.textContent = 'Error';
+                scoreEl.style.color = '#e74c3c';
+            } finally {
+                analysisInProgress = false;
+                button.disabled = false;
+                button.innerHTML = '🔍 Analyze';
+            }
+        }
+        window.analyzeSingleVoice = analyzeSingleVoice;
 
         // A singleton class for the transcriber
         class Transcriber {
