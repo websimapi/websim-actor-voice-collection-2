@@ -962,6 +962,7 @@
                 const ttsResult = await websim.textToSpeech({
                     text: voice.script,
                     voice_sample: voiceUrl,
+                    output_upload: 'v1' // Automatically upload the result to avoid CORS issues
                 });
 
                 const ttsResponse = await fetch(ttsResult.url);
