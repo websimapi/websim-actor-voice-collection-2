@@ -1,0 +1,1099 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Actor Voice Collection</title>
+    <script type="importmap">
+        {
+            "imports": {
+                "@xenova/transformers": "https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.1/dist/transformers.min.js"
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            color: white;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        h1, h2 {
+            text-align: center;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 40px;
+        }
+
+        h2 {
+            font-size: 2.5rem;
+            margin-bottom: 30px;
+        }
+
+        /* Tab Navigation Styles */
+        .tab-navigation {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 40px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 5px;
+            backdrop-filter: blur(10px);
+        }
+
+        .tab-button {
+            flex: 1;
+            max-width: 200px;
+            padding: 15px 20px;
+            background: transparent;
+            border: none;
+            color: rgba(255, 255, 255, 0.7);
+            cursor: pointer;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .tab-button.active {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .tab-button:hover:not(.active) {
+            background: rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        /* Tab Content Styles */
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* TTS Tab Styles */
+        .tts-tab {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .voice-selector-container {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+            align-items: flex-end;
+        }
+
+        .voice-dropdown-container {
+            flex: 1;
+        }
+
+        .voice-dropdown-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #ffd700;
+        }
+
+        #voice-dropdown {
+            width: 100%;
+            padding: 12px 15px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            font-size: 1rem;
+            backdrop-filter: blur(10px);
+        }
+
+        #voice-dropdown option {
+            background: #4a5568;
+            color: white;
+        }
+
+        #random-voice-btn {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+            border: none;
+            border-radius: 10px;
+            padding: 12px 20px;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        #random-voice-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 107, 107, 0.4);
+        }
+
+        .selected-voice-preview {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .preview-title {
+            color: #ffd700;
+            font-weight: bold;
+            font-size: 1.2rem;
+            margin-bottom: 10px;
+        }
+
+        .preview-script {
+            font-style: italic;
+            opacity: 0.9;
+            margin-bottom: 15px;
+            line-height: 1.5;
+        }
+
+        .preview-controls {
+            display: flex;
+            gap: 10px;
+        }
+
+        .preview-play-btn {
+            background: linear-gradient(45deg, #2ecc71, #27ae60);
+            border: none;
+            border-radius: 20px;
+            padding: 8px 16px;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+        }
+
+        .preview-play-btn:hover {
+            transform: scale(1.05);
+        }
+        
+        .voices-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 25px;
+            margin-bottom: 60px;
+        }
+        
+        .voice-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .voice-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 40px rgba(0,0,0,0.3);
+        }
+
+        .voice-card.selected {
+            border-color: #ffd700;
+            box-shadow: 0 0 25px rgba(255, 215, 0, 0.5);
+        }
+        
+        .voice-title {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #ffd700;
+        }
+        
+        .voice-script {
+            font-style: italic;
+            margin-bottom: 20px;
+            line-height: 1.6;
+            opacity: 0.9;
+            flex-grow: 1;
+        }
+
+        .voice-score-container {
+            background: rgba(0,0,0,0.2);
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-size: 0.9rem;
+        }
+
+        .score-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .score-label {
+            font-weight: bold;
+            color: #ffd700;
+        }
+
+        .score-value {
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+
+        .score-details-btn {
+            background: none;
+            border: 1px solid rgba(255,255,255,0.4);
+            color: rgba(255,255,255,0.7);
+            border-radius: 15px;
+            padding: 3px 8px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .score-details-btn:hover {
+            background: rgba(255,255,255,0.1);
+            color: white;
+        }
+
+        .score-details {
+            margin-top: 15px;
+            padding-top: 10px;
+            border-top: 1px solid rgba(255,255,255,0.2);
+            font-size: 0.85rem;
+            line-height: 1.5;
+            display: none;
+        }
+
+        .score-details p {
+            margin: 5px 0;
+        }
+
+        .score-details strong {
+            color: #ffd700;
+        }
+        
+        .card-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .play-button, .use-tts-button {
+            border: none;
+            border-radius: 25px;
+            padding: 12px 0;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+            font-size: 1rem;
+        }
+
+        .play-button {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+        }
+        
+        .use-tts-button {
+            background: linear-gradient(45deg, #487fee, #3259a8);
+        }
+
+        .play-button:hover, .use-tts-button:hover {
+            transform: scale(1.05);
+        }
+        
+        .play-button:active, .use-tts-button:active {
+            transform: scale(0.98);
+        }
+        
+        .playing {
+            background: linear-gradient(45deg, #2ecc71, #27ae60) !important;
+        }
+        
+        .controls {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .control-button {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 20px;
+            padding: 10px 20px;
+            color: white;
+            cursor: pointer;
+            margin: 0 10px;
+            transition: all 0.3s ease;
+            font-size: 1rem;
+        }
+        
+        .control-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        #tts-text {
+            width: 100%;
+            min-height: 120px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            color: white;
+            font-size: 1rem;
+            resize: vertical;
+            margin-bottom: 20px;
+        }
+
+        #tts-text::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        #generate-tts-btn {
+             background: linear-gradient(45deg, #6366f1, #8b5cf6);
+             padding: 15px 30px;
+             border-radius: 25px;
+             font-size: 1.1rem;
+             font-weight: bold;
+        }
+        #generate-tts-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(99, 102, 241, 0.4);
+        }
+
+        #tts-output {
+            width: 100%;
+        }
+
+        #tts-output audio {
+            width: 100%;
+        }
+
+        /* Gallery Styles */
+        .gallery-container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .gallery-item {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: transform 0.2s ease;
+        }
+
+        .gallery-item:hover {
+            transform: translateY(-2px);
+        }
+
+        .gallery-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+            gap: 15px;
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .gallery-info {
+            flex-grow: 1;
+        }
+
+        .username {
+            font-weight: bold;
+            color: #ffd700;
+            font-size: 1.1rem;
+        }
+
+        .voice-type {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 0.9rem;
+        }
+
+        .timestamp {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.8rem;
+        }
+
+        .gallery-text {
+            font-style: italic;
+            margin-bottom: 15px;
+            line-height: 1.5;
+            padding: 10px 15px;
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            border-left: 3px solid #ffd700;
+        }
+
+        .gallery-audio {
+            width: 100%;
+            height: 40px;
+        }
+
+        /* Loading Spinner */
+        .spinner {
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top: 2px solid white;
+            width: 18px;
+            height: 18px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            margin-left: 10px;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎭 Actor Voice Collection</h1>
+        
+        <!-- Tab Navigation -->
+        <div class="tab-navigation">
+            <button class="tab-button active" onclick="switchTab('tts')">🎙️ Voice Cloning</button>
+            <button class="tab-button" onclick="switchTab('voices')">🎭 Voice Collection</button>
+            <button class="tab-button" onclick="switchTab('gallery')">🎵 Community Gallery</button>
+        </div>
+
+        <!-- TTS Tab -->
+        <div id="tts-tab" class="tab-content active">
+            <div class="tts-tab">
+                <h2>🎙️ Voice Cloning TTS</h2>
+                
+                <div class="voice-selector-container">
+                    <div class="voice-dropdown-container">
+                        <label for="voice-dropdown" class="voice-dropdown-label">Select Voice:</label>
+                        <select id="voice-dropdown" onchange="selectVoiceFromDropdown()">
+                            <option value="">Choose a voice...</option>
+                        </select>
+                    </div>
+                    <button id="random-voice-btn" onclick="selectRandomVoice()">🎲 Random</button>
+                </div>
+
+                <div id="selected-voice-preview" class="selected-voice-preview" style="display: none;">
+                    <div class="preview-title" id="preview-title"></div>
+                    <div class="preview-controls">
+                        <button class="preview-play-btn" id="preview-play-btn" onclick="playPreview()">▶ Preview</button>
+                    </div>
+                </div>
+
+                <textarea id="tts-text" placeholder="Enter text here to generate speech with the selected voice..."></textarea>
+                <div style="text-align: center;">
+                    <button id="generate-tts-btn" class="control-button">Generate Speech</button>
+                </div>
+                <div id="tts-output" style="display: none;">
+                    <audio controls></audio>
+                </div>
+            </div>
+        </div>
+
+        <!-- Voices Tab -->
+        <div id="voices-tab" class="tab-content">
+            <h2>🎭 Voice Collection</h2>
+            <div class="controls">
+                <button class="control-button" onclick="stopAll()">Stop All</button>
+                <button class="control-button" onclick="playRandomFromCollection()">Play Random</button>
+                <button id="analyze-btn" class="control-button" onclick="analyzeVoiceScores()">🔍 Analyze All Voices</button>
+            </div>
+            <div class="voices-grid" id="voicesGrid">
+                <!-- Voice cards will be generated by JavaScript -->
+            </div>
+        </div>
+
+        <!-- Gallery Tab -->
+        <div id="gallery-tab" class="tab-content">
+            <h2>🎵 Community Generated Voices</h2>
+            <div class="gallery-container" id="galleryContainer">
+                <!-- Generated TTS samples will appear here -->
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { pipeline, RawAudio } from '@xenova/transformers';
+
+        const voices = [
+            {
+                title: "Shakespearean Actor",
+                script: "To be or not to be, that is the question! Whether 'tis nobler in the mind to suffer the slings and arrows of outrageous fortune...",
+                file: "shakespearean_actor.mp3"
+            },
+            {
+                title: "Action Hero",
+                script: "I'll be back. And when I return, there's gonna be hell to pay. Nobody messes with my family and gets away with it!",
+                file: "action_hero.mp3"
+            },
+            {
+                title: "Mysterious Narrator",
+                script: "In the shadows of the night, where secrets whisper and truth hides... one man will discover that reality is far stranger than fiction.",
+                file: "mysterious_narrator.mp3"
+            },
+            {
+                title: "Comedy Character",
+                script: "Well, that's just fantastic! Another brilliant plan gone completely sideways. What could possibly go wrong next? Don't answer that!",
+                file: "comedy_character.mp3"
+            },
+            {
+                title: "Sinister Villain",
+                script: "You fools think you can stop me? I've been planning this for years... and now, finally, my moment of triumph has arrived!",
+                file: "sinister_villain.mp3"
+            },
+            {
+                title: "News Anchor",
+                script: "Good evening, I'm reporting live from downtown where breaking news continues to unfold. We'll have more updates as this story develops.",
+                file: "news_anchor.mp3"
+            },
+            {
+                title: "Southern Gentleman",
+                script: "Well, I do declare! That's the finest hospitality I've encountered in all my years. Y'all sure know how to treat a gentleman right proper.",
+                file: "southern_gentleman.mp3"
+            },
+            {
+                title: "British Aristocrat",
+                script: "I say, old chap, that simply won't do at all! One must maintain proper standards, don't you know. Quite improper, really.",
+                file: "british_aristocrat.mp3"
+            },
+            {
+                title: "Sci-Fi Robot",
+                script: "System analysis complete. Human behavior patterns remain... illogical. Recalibrating social interaction protocols for optimal efficiency.",
+                file: "scifi_robot.mp3"
+            },
+            {
+                title: "Fantasy Wizard",
+                script: "By the ancient powers that flow through these mystical realms, I summon thee! The magic of ages past shall guide us to victory!",
+                file: "fantasy_wizard.mp3"
+            },
+            {
+                title: "Drill Sergeant",
+                script: "Listen up, maggots! You will give me one hundred percent, or I will personally see to it that you regret the day you were born! Drop and give me twenty! Now! Move, move, move!",
+                file: "drill_sergeant.mp3"
+            },
+            {
+                title: "Pirate Captain",
+                script: "Yarrr, me hearties! Hoist the colors and ready the cannons! There be treasure on the horizon, and ol' Captain Blackheart aims to claim it! The sea be a cruel mistress, but she rewards the bold!",
+                file: "pirate_captain.mp3"
+            },
+            {
+                title: "Hard-boiled Detective",
+                script: "The city was a rain-soaked chessboard, and I was just another pawn. She walked into my office like a dame from a dime-store novel, trouble written all over her in lipstick red. This case smelled fishier than a cannery on a hot day.",
+                file: "hardboiled_detective.mp3"
+            },
+            {
+                title: "Meditation Guide",
+                script: "Breathe in deeply... and now, exhale, releasing all tension. Feel the weight of the world lift from your shoulders. You are here, in this moment. Peaceful. Calm. Centered.",
+                file: "meditation_guide.mp3"
+            },
+            {
+                title: "Game Show Host",
+                script: "Welcome back, folks! Our next contestant is just one question away from winning the grand prize! A brand new car! A trip for two to Hawaii! And a lifetime supply of cheese! Are you ready to play... The Price is... RIGHTEOUS?",
+                file: "gameshow_host.mp3"
+            }
+        ];
+
+        // Initialize database connection
+        const room = new WebsimSocket();
+
+        let currentAudio = null;
+        let currentButton = null;
+        let selectedVoiceForTTS = null;
+        let uploadedVoiceUrls = {}; // Cache for uploaded URLs
+        let previewAudio = null;
+        let analysisInProgress = false;
+
+        // Tab switching functionality
+        function switchTab(tabName) {
+            // Hide all tab contents
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            
+            // Remove active class from all tab buttons
+            document.querySelectorAll('.tab-button').forEach(button => {
+                button.classList.remove('active');
+            });
+            
+            // Show selected tab content
+            document.getElementById(tabName + '-tab').classList.add('active');
+            
+            // Add active class to clicked tab button
+            event.target.classList.add('active');
+
+            if (tabName === 'voices' && !document.querySelector('.voice-card .score-value.analyzed')) {
+                // analyzeVoiceScores();
+            }
+        }
+        window.switchTab = switchTab;
+
+        // Populate voice dropdown
+        function populateVoiceDropdown() {
+            const dropdown = document.getElementById('voice-dropdown');
+            voices.forEach((voice, index) => {
+                const option = document.createElement('option');
+                option.value = index;
+                option.textContent = voice.title;
+                dropdown.appendChild(option);
+            });
+        }
+        window.populateVoiceDropdown = populateVoiceDropdown;
+
+        // Select voice from dropdown
+        function selectVoiceFromDropdown() {
+            const dropdown = document.getElementById('voice-dropdown');
+            const selectedIndex = dropdown.value;
+            
+            if (selectedIndex === '') {
+                hideVoicePreview();
+                if (previewAudio) {
+                    previewAudio.pause();
+                    previewAudio = null;
+                }
+                document.getElementById('preview-play-btn').textContent = '▶ Preview';
+                return;
+            }
+            
+            selectVoiceForTTS(parseInt(selectedIndex));
+        }
+        window.selectVoiceFromDropdown = selectVoiceFromDropdown;
+
+        // Select random voice
+        function selectRandomVoice() {
+            const randomIndex = Math.floor(Math.random() * voices.length);
+            document.getElementById('voice-dropdown').value = randomIndex;
+            selectVoiceForTTS(randomIndex);
+        }
+        window.selectRandomVoice = selectRandomVoice;
+
+        // Select voice for TTS (updated function)
+        function selectVoiceForTTS(index) {
+            const voice = voices[index];
+            selectedVoiceForTTS = { file: voice.file, title: voice.title, script: voice.script };
+
+            // Stop and clear any existing preview audio from another voice
+            if (previewAudio) {
+                previewAudio.pause();
+                previewAudio = null;
+            }
+            document.getElementById('preview-play-btn').textContent = '▶ Preview';
+            
+            // Show and update preview
+            showVoicePreview(voice);
+        }
+
+        // Show voice preview
+        function showVoicePreview(voice) {
+            const preview = document.getElementById('selected-voice-preview');
+            const title = document.getElementById('preview-title');
+            
+            title.textContent = voice.title;
+            preview.style.display = 'block';
+        }
+
+        // Hide voice preview
+        function hideVoicePreview() {
+            document.getElementById('selected-voice-preview').style.display = 'none';
+            selectedVoiceForTTS = null;
+        }
+
+        // Play preview
+        function playPreview() {
+            if (!selectedVoiceForTTS) return;
+            
+            const button = document.getElementById('preview-play-btn');
+
+            // If there's no preview audio object for the current voice, create it
+            if (!previewAudio) {
+                previewAudio = new Audio(selectedVoiceForTTS.file);
+                previewAudio.onended = function() {
+                    button.textContent = '▶ Preview';
+                    button.classList.remove('playing');
+                };
+            }
+
+            // Toggle play/pause
+            if (previewAudio.paused) {
+                previewAudio.play();
+                button.textContent = '⏸️ Pause';
+                button.classList.add('playing');
+            } else {
+                previewAudio.pause();
+                button.textContent = '▶ Preview';
+                button.classList.remove('playing');
+            }
+        }
+        window.playPreview = playPreview;
+
+        // Upload audio file to get URL
+        async function uploadAudioFile(filename) {
+            if (uploadedVoiceUrls[filename]) {
+                return uploadedVoiceUrls[filename];
+            }
+
+            try {
+                // Fetch the local audio file
+                const response = await fetch(filename);
+                const blob = await response.blob();
+                
+                // Create a File object
+                const file = new File([blob], filename, { type: blob.type });
+                
+                // Upload to websim storage
+                const url = await websim.upload(file);
+                uploadedVoiceUrls[filename] = url;
+                return url;
+            } catch (error) {
+                console.error('Error uploading audio file:', error);
+                throw error;
+            }
+        }
+
+        function createVoiceCard(voice, index) {
+            return `
+                <div class="voice-card" id="voice-card-${index}">
+                    <div class="voice-title">${voice.title}</div>
+                    <div class="voice-script">"${voice.script}"</div>
+                    <div class="voice-score-container">
+                         <div class="score-header">
+                            <span class="score-label">Accuracy Score</span>
+                            <button class="score-details-btn" id="details-btn-${index}" onclick="toggleScoreDetails(${index})" style="display:none;">Details</button>
+                        </div>
+                        <div class="score-value" id="score-value-${index}">Not yet analyzed</div>
+                        <div class="score-details" id="score-details-${index}">
+                            <p><strong>Expected:</strong> <span>"${voice.script}"</span></p>
+                            <p><strong>Transcribed:</strong> <span id="transcribed-text-${index}"></span></p>
+                        </div>
+                    </div>
+                    <div class="card-buttons">
+                        <button class="play-button" onclick="playVoice('${voice.file}', this)">
+                            ▶ Play
+                        </button>
+                        <button class="use-tts-button" onclick="selectForTTSFromCard('${voice.file}', '${voice.title}', ${index})">
+                            🎙️ Use for TTS
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function playVoice(filename, button) {
+            // Stop current audio if playing
+            if (currentAudio) {
+                currentAudio.pause();
+                currentAudio.currentTime = 0;
+                if (currentButton) {
+                    currentButton.classList.remove('playing');
+                    currentButton.innerHTML = '▶ Play';
+                }
+            }
+
+            // If clicking the same button, just stop
+            if (currentButton === button) {
+                currentAudio = null;
+                currentButton = null;
+                return;
+            }
+
+            // Play new audio
+            currentAudio = new Audio(filename);
+            currentButton = button;
+            
+            button.classList.add('playing');
+            button.innerHTML = '⏸️ Playing...';
+            
+            currentAudio.play();
+            
+            currentAudio.onended = function() {
+                button.classList.remove('playing');
+                button.innerHTML = '▶ Play';
+                currentAudio = null;
+                currentButton = null;
+            };
+        }
+        window.playVoice = playVoice;
+
+        function stopAll() {
+            if (currentAudio) {
+                currentAudio.pause();
+                currentAudio.currentTime = 0;
+                if (currentButton) {
+                    currentButton.classList.remove('playing');
+                    currentButton.innerHTML = '▶ Play';
+                }
+                currentAudio = null;
+                currentButton = null;
+            }
+        }
+        window.stopAll = stopAll;
+
+        function playRandomFromCollection() {
+            stopAll();
+            const randomIndex = Math.floor(Math.random() * voices.length);
+            const buttons = document.querySelectorAll('.play-button');
+            playVoice(voices[randomIndex].file, buttons[randomIndex]);
+        }
+        window.playRandomFromCollection = playRandomFromCollection;
+
+        function selectForTTSFromCard(filename, title, index) {
+            // Switch to TTS tab
+            switchTab('tts');
+            
+            // Update dropdown selection
+            document.getElementById('voice-dropdown').value = index;
+            
+            // Select the voice
+            selectVoiceForTTS(index);
+            
+            // Highlight selected card
+            document.querySelectorAll('.voice-card').forEach(card => card.classList.remove('selected'));
+            document.getElementById(`voice-card-${index}`).classList.add('selected');
+        }
+        window.selectForTTSFromCard = selectForTTSFromCard;
+
+        async function generateTTS() {
+            const text = document.getElementById('tts-text').value.trim();
+            const generateBtn = document.getElementById('generate-tts-btn');
+            const ttsOutput = document.getElementById('tts-output');
+            const audioPlayer = ttsOutput.querySelector('audio');
+
+            if (!selectedVoiceForTTS) {
+                alert('Please select a voice first.');
+                return;
+            }
+
+            if (!text) {
+                alert('Please enter some text to generate speech.');
+                return;
+            }
+
+            // Set loading state
+            generateBtn.disabled = true;
+            generateBtn.innerHTML = 'Generating... <div class="spinner"></div>';
+
+            try {
+                // Upload the audio file first to get a URL
+                const voiceUrl = await uploadAudioFile(selectedVoiceForTTS.file);
+                
+                const result = await websim.textToSpeech({
+                    text: text,
+                    voice_sample: voiceUrl
+                });
+
+                audioPlayer.src = result.url;
+                ttsOutput.style.display = 'block';
+                audioPlayer.play();
+
+                // Save to database
+                await room.collection('generated_voice').create({
+                    text: text,
+                    voice_type: selectedVoiceForTTS.title,
+                    audio_url: result.url,
+                    voice_sample_file: selectedVoiceForTTS.file
+                });
+
+                // Clear the text area after successful generation
+                document.getElementById('tts-text').value = '';
+
+            } catch (error) {
+                console.error('TTS Generation Error:', error);
+                alert('Sorry, there was an error generating the speech. Please try again.');
+            } finally {
+                // Reset button
+                generateBtn.disabled = false;
+                generateBtn.innerHTML = 'Generate Speech';
+            }
+        }
+        
+        // Event Listeners
+        document.getElementById('generate-tts-btn').addEventListener('click', generateTTS);
+
+        function levenshtein(s1, s2) {
+            s1 = s1.toLowerCase();
+            s2 = s2.toLowerCase();
+
+            const costs = [];
+            for (let i = 0; i <= s1.length; i++) {
+                let lastValue = i;
+                for (let j = 0; j <= s2.length; j++) {
+                    if (i === 0) {
+                        costs[j] = j;
+                    } else {
+                        if (j > 0) {
+                            let newValue = costs[j - 1];
+                            if (s1.charAt(i - 1) !== s2.charAt(j - 1)) {
+                                newValue = Math.min(Math.min(newValue, lastValue), costs[j]) + 1;
+                            }
+                            costs[j - 1] = lastValue;
+                            lastValue = newValue;
+                        }
+                    }
+                }
+                if (i > 0) costs[s2.length] = lastValue;
+            }
+            return costs[s2.length];
+        }
+
+        function calculateAccuracy(text1, text2) {
+            const sanitized1 = text1.toLowerCase().replace(/[^\w\s]/g, '');
+            const sanitized2 = text2.toLowerCase().replace(/[^\w\s]/g, '');
+            const distance = levenshtein(sanitized1, sanitized2);
+            const maxLength = Math.max(sanitized1.length, sanitized2.length);
+            if (maxLength === 0) return 100;
+            const accuracy = (1 - distance / maxLength) * 100;
+            return Math.max(0, accuracy);
+        }
+
+        async function analyzeVoiceScores() {
+            if (analysisInProgress) {
+                 alert("Analysis is already in progress.");
+                 return;
+            }
+            analysisInProgress = true;
+            const analyzeBtn = document.getElementById('analyze-btn');
+            analyzeBtn.disabled = true;
+            analyzeBtn.innerHTML = 'Analyzing... <div class="spinner"></div>';
+
+            try {
+                 // 1. Let the user know we are loading the model
+                for (const [i, voice] of voices.entries()) {
+                    const scoreEl = document.getElementById(`score-value-${i}`);
+                    if (scoreEl) {
+                        scoreEl.innerHTML = 'Loading model...';
+                    }
+                }
+
+                // 2. Load transcriber
+                const transcriber = await Transcriber.getInstance((progress) => {
+                     for (const [i, voice] of voices.entries()) {
+                        const scoreEl = document.getElementById(`score-value-${i}`);
+                        if (scoreEl && !scoreEl.classList.contains('analyzed')) {
+                           scoreEl.textContent = `Loading model... ${Math.round(progress.progress)}%`;
+                        }
+                    }
+                });
+
+
+                // 3. Transcribe each voice
+                for (const [i, voice] of voices.entries()) {
+                    const scoreEl = document.getElementById(`score-value-${i}`);
+                    const detailsBtn = document.getElementById(`details-btn-${i}`);
+                    scoreEl.innerHTML = 'Analyzing... <div class="spinner"></div>';
+                    try {
+                        const audioCTX = new AudioContext({ sampleRate: 16000 });
+                        const response = await fetch(voice.file);
+                        const arrayBuffer = await response.arrayBuffer();
+                        const audioBuffer = await audioCTX.decodeAudioData(arrayBuffer);
+                        const rawAudio = new RawAudio(audioBuffer.getChannelData(0), audioCTX.sampleRate);
+                        
+                        const result = await transcriber(rawAudio, {
+                            language: 'english',
+                            task: 'transcribe'
+                        });
+                        const transcript = result.text.trim();
+                        const accuracy = calculateAccuracy(voice.script, transcript);
+
+                        document.getElementById(`transcribed-text-${i}`).textContent = `"${transcript}"`;
+                        scoreEl.textContent = `${accuracy.toFixed(1)}%`;
+                        scoreEl.classList.add('analyzed');
+
+                        if (accuracy > 85) scoreEl.style.color = '#2ecc71';
+                        else if (accuracy > 60) scoreEl.style.color = '#f1c40f';
+                        else scoreEl.style.color = '#e74c3c';
+                        
+                        if(detailsBtn) detailsBtn.style.display = 'inline-block';
+
+                    } catch (e) {
+                        console.error(`Error analyzing ${voice.title}:`, e);
+                        scoreEl.textContent = 'Error';
+                        scoreEl.style.color = '#e74c3c';
+                    }
+                }
+            } catch (error) {
+                console.error("Failed to initialize the transcriber model:", error);
+                alert("Could not load the analysis model. Please refresh and try again.");
+                for (const [i, voice] of voices.entries()) {
+                     document.getElementById(`score-value-${i}`).textContent = 'Model load failed';
+                }
+            } finally {
+                analysisInProgress = false;
+                analyzeBtn.disabled = false;
+                analyzeBtn.innerHTML = '🔍 Analyze All Voices';
+            }
+        }
+        window.analyzeVoiceScores = analyzeVoiceScores;
+        
+        function toggleScoreDetails(index) {
+            const detailsEl = document.getElementById(`score-details-${index}`);
+            const btn = document.getElementById(`details-btn-${index}`);
+            if (detailsEl.style.display === 'none') {
+                detailsEl.style.display = 'block';
+                btn.textContent = 'Hide';
+            } else {
+                detailsEl.style.display = 'none';
+                btn.textContent = 'Details';
+            }
+        }
+        window.toggleScoreDetails = toggleScoreDetails;
+
+        // Initialize the page
+        populateVoiceDropdown();
+        document.getElementById('voicesGrid').innerHTML = voices.map(createVoiceCard).join('');
+        
+        function renderGallery(voices) {
+            const container = document.getElementById('galleryContainer');
+            if (voices.length === 0) {
+                container.innerHTML = '<p style="text-align: center; opacity: 0.7;">No generated voices yet. Be the first to create one!</p>';
+                return;
+            }
+
+            container.innerHTML = voices.reverse().map(voice => `
+                <div class="gallery-item">
+                    <div class="gallery-header">
+                        <img src="https://images.websim.com/avatar/${voice.username}" alt="${voice.username}" class="user-avatar">
+                        <div class="gallery-info">
+                            <div class="username">@${voice.username}</div>
+                            <div class="voice-type">${voice.voice_type}</div>
+                            <div class="timestamp">${new Date(voice.created_at).toLocaleDateString()}</div>
+                        </div>
+                    </div>
+                    <div class="gallery-text">"${voice.text}"</div>
+                    <audio controls class="gallery-audio">
+                        <source src="${voice.audio_url}" type="audio/wav">
+                    </audio>
+                </div>
+            `).join('');
+        }
+
+        // Subscribe to gallery updates
+        room.collection('generated_voice').subscribe(renderGallery);
+    </script>
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js/v8c78df7c7c0f484497ecbca7046644da1771523124516" integrity="sha512-8DS7rgIrAmghBFwoOTujcf6D9rXvH8xm8JQ1Ja01h9QX8EzXldiszufYa4IFfKdLUKTTrnSFXLDkUEOTrZQ8Qg==" data-cf-beacon='{"version":"2024.11.0","token":"4c6229722a6346bc8eb5cb0e5eae5d41","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
+</body>
+</html>
