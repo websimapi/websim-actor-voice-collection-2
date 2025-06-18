@@ -11,7 +11,504 @@
             }
         }
     </script>
-    <link rel="stylesheet" href="styles.css">
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            color: white;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        h1, h2 {
+            text-align: center;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 40px;
+        }
+
+        h2 {
+            font-size: 2.5rem;
+            margin-bottom: 30px;
+        }
+
+        /* Tab Navigation Styles */
+        .tab-navigation {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 40px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 5px;
+            backdrop-filter: blur(10px);
+        }
+
+        .tab-button {
+            flex: 1;
+            max-width: 200px;
+            padding: 15px 20px;
+            background: transparent;
+            border: none;
+            color: rgba(255, 255, 255, 0.7);
+            cursor: pointer;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .tab-button.active {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .tab-button:hover:not(.active) {
+            background: rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        /* Tab Content Styles */
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* TTS Tab Styles */
+        .tts-tab {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .voice-selector-container {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+            align-items: flex-end;
+        }
+
+        .voice-dropdown-container {
+            flex: 1;
+        }
+
+        .voice-dropdown-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #ffd700;
+        }
+
+        #voice-dropdown {
+            width: 100%;
+            padding: 12px 15px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            font-size: 1rem;
+            backdrop-filter: blur(10px);
+        }
+
+        #voice-dropdown option {
+            background: #4a5568;
+            color: white;
+        }
+
+        #random-voice-btn {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+            border: none;
+            border-radius: 10px;
+            padding: 12px 20px;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        #random-voice-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 107, 107, 0.4);
+        }
+
+        .selected-voice-preview {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .preview-title {
+            color: #ffd700;
+            font-weight: bold;
+            font-size: 1.2rem;
+            margin-bottom: 10px;
+        }
+
+        .preview-script {
+            font-style: italic;
+            opacity: 0.9;
+            margin-bottom: 15px;
+            line-height: 1.5;
+        }
+
+        .preview-controls {
+            display: flex;
+            gap: 10px;
+        }
+
+        .preview-play-btn {
+            background: linear-gradient(45deg, #2ecc71, #27ae60);
+            border: none;
+            border-radius: 20px;
+            padding: 8px 16px;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+        }
+
+        .preview-play-btn:hover {
+            transform: scale(1.05);
+        }
+        
+        .voices-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 25px;
+            margin-bottom: 60px;
+        }
+        
+        .voice-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .voice-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 40px rgba(0,0,0,0.3);
+        }
+
+        .voice-card.selected {
+            border-color: #ffd700;
+            box-shadow: 0 0 25px rgba(255, 215, 0, 0.5);
+        }
+        
+        .voice-title {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #ffd700;
+        }
+        
+        .voice-script {
+            font-style: italic;
+            margin-bottom: 20px;
+            line-height: 1.6;
+            opacity: 0.9;
+            flex-grow: 1;
+        }
+
+        .voice-score-container {
+            background: rgba(0,0,0,0.2);
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-size: 0.9rem;
+        }
+
+        .score-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .score-label {
+            font-weight: bold;
+            color: #ffd700;
+        }
+
+        .score-value {
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+
+        .score-details-btn {
+            background: none;
+            border: 1px solid rgba(255,255,255,0.4);
+            color: rgba(255,255,255,0.7);
+            border-radius: 15px;
+            padding: 3px 8px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .score-details-btn:hover {
+            background: rgba(255,255,255,0.1);
+            color: white;
+        }
+
+        .score-details {
+            margin-top: 15px;
+            padding-top: 10px;
+            border-top: 1px solid rgba(255,255,255,0.2);
+            font-size: 0.85rem;
+            line-height: 1.5;
+            display: none;
+        }
+
+        .score-details p {
+            margin: 5px 0;
+        }
+
+        .score-details strong {
+            color: #ffd700;
+        }
+
+        .score-details ul {
+            list-style-type: '👉';
+            padding-left: 20px;
+            margin: 10px 0;
+        }
+
+        .score-details .transcribed-text-container {
+            font-style: italic;
+            padding: 8px 12px;
+            background: rgba(0,0,0,0.25);
+            border-radius: 6px;
+            border-left: 3px solid #ff6b6b;
+            margin: 8px 0 12px;
+            font-size: 0.9em;
+            color: rgba(255,255,255,0.9);
+        }
+
+        .score-details .metric-list {
+            list-style-type: none;
+            padding-left: 10px;
+            font-family: monospace;
+            font-size: 0.8rem;
+        }
+
+        .score-details .metric-list li {
+            white-space: pre;
+        }
+        
+        .card-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: auto; /* Pushes buttons to the bottom */
+        }
+
+        .play-button, .use-tts-button, .analyze-one-button {
+            border: none;
+            border-radius: 25px;
+            padding: 12px 0;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+        }
+
+        .play-button {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+        }
+        
+        .use-tts-button {
+            background: linear-gradient(45deg, #487fee, #3259a8);
+        }
+
+        .analyze-one-button {
+             background: linear-gradient(45deg, #1abc9c, #16a085);
+        }
+
+        .play-button:hover, .use-tts-button:hover, .analyze-one-button:hover {
+            transform: scale(1.05);
+        }
+        
+        .play-button:active, .use-tts-button:active, .analyze-one-button:active {
+            transform: scale(0.98);
+        }
+        
+        .playing {
+            background: linear-gradient(45deg, #2ecc71, #27ae60) !important;
+        }
+        
+        .controls {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .control-button {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 20px;
+            padding: 10px 20px;
+            color: white;
+            cursor: pointer;
+            margin: 0 10px;
+            transition: all 0.3s ease;
+            font-size: 1rem;
+        }
+        
+        .control-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        #tts-text {
+            width: 100%;
+            min-height: 120px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            color: white;
+            font-size: 1rem;
+            resize: vertical;
+            margin-bottom: 20px;
+        }
+
+        #tts-text::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        #generate-tts-btn {
+             background: linear-gradient(45deg, #6366f1, #8b5cf6);
+             padding: 15px 30px;
+             border-radius: 25px;
+             font-size: 1.1rem;
+             font-weight: bold;
+        }
+        #generate-tts-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(99, 102, 241, 0.4);
+        }
+
+        #tts-output {
+            width: 100%;
+        }
+
+        #tts-output audio {
+            width: 100%;
+        }
+
+        /* Gallery Styles */
+        .gallery-container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .gallery-item {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: transform 0.2s ease;
+        }
+
+        .gallery-item:hover {
+            transform: translateY(-2px);
+        }
+
+        .gallery-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+            gap: 15px;
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .gallery-info {
+            flex-grow: 1;
+        }
+
+        .username {
+            font-weight: bold;
+            color: #ffd700;
+            font-size: 1.1rem;
+        }
+
+        .voice-type {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 0.9rem;
+        }
+
+        .timestamp {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.8rem;
+        }
+
+        .gallery-text {
+            font-style: italic;
+            margin-bottom: 15px;
+            line-height: 1.5;
+            padding: 10px 15px;
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            border-left: 3px solid #ffd700;
+        }
+
+        .gallery-audio {
+            width: 100%;
+            height: 40px;
+        }
+
+        /* Loading Spinner */
+        .spinner {
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top: 2px solid white;
+            width: 18px;
+            height: 18px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            margin-left: 10px;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
 </head>
 <body>
     <div class="container">
@@ -78,7 +575,1097 @@
         </div>
     </div>
 
-    <script type="module" src="main.js"></script>
+    <script type="module">
+        import { pipeline } from '@xenova/transformers';
+
+        const voices = [
+            {
+                title: "Shakespearean Actor",
+                script: "To be or not to be, that is the question! Whether 'tis nobler in the mind to suffer the slings and arrows of outrageous fortune...",
+                file: "shakespearean_actor.mp3"
+            },
+            {
+                title: "Action Hero",
+                script: "I'll be back. And when I return, there's gonna be hell to pay. Nobody messes with my family and gets away with it!",
+                file: "action_hero.mp3"
+            },
+            {
+                title: "Mysterious Narrator",
+                script: "In the shadows of the night, where secrets whisper and truth hides... one man will discover that reality is far stranger than fiction.",
+                file: "mysterious_narrator.mp3"
+            },
+            {
+                title: "Comedy Character",
+                script: "Well, that's just fantastic! Another brilliant plan gone completely sideways. What could possibly go wrong next? Don't answer that!",
+                file: "comedy_character.mp3"
+            },
+            {
+                title: "Sinister Villain",
+                script: "You fools think you can stop me? I've been planning this for years... and now, finally, my moment of triumph has arrived!",
+                file: "sinister_villain.mp3"
+            },
+            {
+                title: "News Anchor",
+                script: "Good evening, I'm reporting live from downtown where breaking news continues to unfold. We'll have more updates as this story develops.",
+                file: "news_anchor.mp3"
+            },
+            {
+                title: "Southern Gentleman",
+                script: "Well, I do declare! That's the finest hospitality I've encountered in all my years. Y'all sure know how to treat a gentleman right proper.",
+                file: "southern_gentleman.mp3"
+            },
+            {
+                title: "British Aristocrat",
+                script: "I say, old chap, that simply won't do at all! One must maintain proper standards, don't you know. Quite improper, really.",
+                file: "british_aristocrat.mp3"
+            },
+            {
+                title: "Sci-Fi Robot",
+                script: "System analysis complete. Human behavior patterns remain... illogical. Recalibrating social interaction protocols for optimal efficiency.",
+                file: "scifi_robot.mp3"
+            },
+            {
+                title: "Fantasy Wizard",
+                script: "By the ancient powers that flow through these mystical realms, I summon thee! The magic of ages past shall guide us to victory!",
+                file: "fantasy_wizard.mp3"
+            },
+            {
+                title: "Drill Sergeant",
+                script: "Listen up, maggots! You will give me one hundred percent, or I will personally see to it that you regret the day you were born! Drop and give me twenty! Now! Move, move, move!",
+                file: "drill_sergeant.mp3"
+            },
+            {
+                title: "Pirate Captain",
+                script: "Yarrr, me hearties! Hoist the colors and ready the cannons! There be treasure on the horizon, and ol' Captain Blackheart aims to claim it! The sea be a cruel mistress, but she rewards the bold!",
+                file: "pirate_captain.mp3"
+            },
+            {
+                title: "Hard-boiled Detective",
+                script: "The city was a rain-soaked chessboard, and I was just another pawn. She walked into my office like a dame from a dime-store novel, trouble written all over her in lipstick red. This case smelled fishier than a cannery on a hot day.",
+                file: "hardboiled_detective.mp3"
+            },
+            {
+                title: "Meditation Guide",
+                script: "Breathe in deeply... and now, exhale, releasing all tension. Feel the weight of the world lift from your shoulders. You are here, in this moment. Peaceful. Calm. Centered.",
+                file: "meditation_guide.mp3"
+            },
+            {
+                title: "Game Show Host",
+                script: "Welcome back, folks! Our next contestant is just one question away from winning the grand prize! A brand new car! A trip for two to Hawaii! And a lifetime supply of cheese! Are you ready to play... The Price is... RIGHTEOUS?",
+                file: "gameshow_host.mp3"
+            }
+        ];
+
+        // Initialize database connection
+        const room = new WebsimSocket();
+
+        let currentAudio = null;
+        let currentButton = null;
+        let selectedVoiceForTTS = null;
+        let uploadedVoiceUrls = {}; // Cache for uploaded URLs
+        let previewAudio = null;
+        let analysisInProgress = false;
+
+        // Tab switching functionality
+        function switchTab(tabName) {
+            // Hide all tab contents
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            
+            // Remove active class from all tab buttons
+            document.querySelectorAll('.tab-button').forEach(button => {
+                button.classList.remove('active');
+            });
+            
+            // Show selected tab content
+            document.getElementById(tabName + '-tab').classList.add('active');
+            
+            // Add active class to clicked tab button
+            event.target.classList.add('active');
+
+            if (tabName === 'voices' && !document.querySelector('.voice-card .score-value.analyzed')) {
+                // analyzeVoiceScores();
+            }
+        }
+        window.switchTab = switchTab;
+
+        // Populate voice dropdown
+        function populateVoiceDropdown() {
+            const dropdown = document.getElementById('voice-dropdown');
+            voices.forEach((voice, index) => {
+                const option = document.createElement('option');
+                option.value = index;
+                option.textContent = voice.title;
+                dropdown.appendChild(option);
+            });
+        }
+        window.populateVoiceDropdown = populateVoiceDropdown;
+
+        // Select voice from dropdown
+        function selectVoiceFromDropdown() {
+            const dropdown = document.getElementById('voice-dropdown');
+            const selectedIndex = dropdown.value;
+            
+            if (selectedIndex === '') {
+                hideVoicePreview();
+                if (previewAudio) {
+                    previewAudio.pause();
+                    previewAudio = null;
+                }
+                document.getElementById('preview-play-btn').textContent = '▶ Preview';
+                return;
+            }
+            
+            selectVoiceForTTS(parseInt(selectedIndex));
+        }
+        window.selectVoiceFromDropdown = selectVoiceFromDropdown;
+
+        // Select random voice
+        function selectRandomVoice() {
+            const randomIndex = Math.floor(Math.random() * voices.length);
+            document.getElementById('voice-dropdown').value = randomIndex;
+            selectVoiceForTTS(randomIndex);
+        }
+        window.selectRandomVoice = selectRandomVoice;
+
+        // Select voice for TTS (updated function)
+        function selectVoiceForTTS(index) {
+            const voice = voices[index];
+            selectedVoiceForTTS = { file: voice.file, title: voice.title, script: voice.script };
+
+            // Stop and clear any existing preview audio from another voice
+            if (previewAudio) {
+                previewAudio.pause();
+                previewAudio = null;
+            }
+            document.getElementById('preview-play-btn').textContent = '▶ Preview';
+            
+            // Show and update preview
+            showVoicePreview(voice);
+        }
+
+        // Show voice preview
+        function showVoicePreview(voice) {
+            const preview = document.getElementById('selected-voice-preview');
+            const title = document.getElementById('preview-title');
+            
+            title.textContent = voice.title;
+            preview.style.display = 'block';
+        }
+
+        // Hide voice preview
+        function hideVoicePreview() {
+            document.getElementById('selected-voice-preview').style.display = 'none';
+            selectedVoiceForTTS = null;
+        }
+
+        // Play preview
+        function playPreview() {
+            if (!selectedVoiceForTTS) return;
+            
+            const button = document.getElementById('preview-play-btn');
+
+            // If there's no preview audio object for the current voice, create it
+            if (!previewAudio) {
+                previewAudio = new Audio(selectedVoiceForTTS.file);
+                previewAudio.onended = function() {
+                    button.textContent = '▶ Preview';
+                    button.classList.remove('playing');
+                };
+            }
+
+            // Toggle play/pause
+            if (previewAudio.paused) {
+                previewAudio.play();
+                button.textContent = '⏸️ Pause';
+                button.classList.add('playing');
+            } else {
+                previewAudio.pause();
+                button.textContent = '▶ Preview';
+                button.classList.remove('playing');
+            }
+        }
+        window.playPreview = playPreview;
+
+        // Upload audio file to get URL
+        async function uploadAudioFile(filename) {
+            if (uploadedVoiceUrls[filename]) {
+                return uploadedVoiceUrls[filename];
+            }
+
+            try {
+                // Fetch the local audio file
+                const response = await fetch(filename);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const blob = await response.blob();
+                
+                // Create a File object
+                const file = new File([blob], filename.split('/').pop(), { type: blob.type });
+                
+                // Upload to websim storage
+                const url = await websim.upload(file);
+                uploadedVoiceUrls[filename] = url;
+                return url;
+            } catch (error) {
+                console.error('Error uploading audio file:', filename, error);
+                throw error;
+            }
+        }
+
+        const CORS_PROXIES = [
+            'https://corsproxy.io/?',
+            'https://api.allorigins.win/raw?url='
+        ];
+
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        async function fetchWithProxiesAndRetries(url, fetchOptions = {}, retries = 2, initialDelay = 500) {
+            let attempt = 0;
+            
+            // Attempt 1: Direct fetch
+            attempt++;
+            console.log(`[Fetch Attempt ${attempt}] Trying direct fetch for: ${url}`);
+            try {
+                const response = await fetch(url, fetchOptions);
+                if (response.ok) {
+                    console.log(`[Fetch Success] Direct fetch for ${url} succeeded.`);
+                    return response;
+                }
+                // If it's a server error, we might retry later with proxies
+                if (response.status >= 500) {
+                     console.warn(`[Fetch Warn] Direct fetch for ${url} failed with server error: ${response.status}. Will try proxies.`);
+                } else {
+                    // For other non-OK responses (like 404), fail fast before proxies
+                    console.error(`[Fetch Error] Direct fetch for ${url} failed with client error: ${response.status}. Aborting.`);
+                    throw new Error(`Failed to fetch from ${url} (status: ${response.status})`);
+                }
+            } catch (error) {
+                // This typically catches network errors, including CORS
+                console.warn(`[Fetch Warn] Direct fetch for ${url} failed. Error: ${error.message}. Proceeding to proxies.`);
+            }
+
+            // Attempts 2+: Proxies and retries
+            for (const proxy of CORS_PROXIES) {
+                const proxyUrl = `${proxy}${encodeURIComponent(url)}`;
+                let delay = initialDelay;
+                for (let i = 0; i < retries; i++) {
+                    attempt++;
+                    console.log(`[Fetch Attempt ${attempt}] Retrying with proxy (${proxy.split('/')[2]}) - try ${i+1}/${retries}. URL: ${proxyUrl}`);
+                    try {
+                        const response = await fetch(proxyUrl, fetchOptions);
+                        if (response.ok) {
+                            console.log(`[Fetch Success] Proxy fetch for ${url} succeeded.`);
+                            return response;
+                        }
+                        console.warn(`[Fetch Warn] Proxy fetch for ${url} failed with status ${response.status}. Retrying in ${delay}ms...`);
+                    } catch (error) {
+                         console.warn(`[Fetch Warn] Proxy fetch for ${url} failed. Error: ${error.message}. Retrying in ${delay}ms...`);
+                    }
+                    await sleep(delay);
+                    delay *= 2; // Exponential backoff
+                }
+            }
+            
+            console.error(`[Fetch Error] All fetch attempts for ${url} (including proxies) have failed.`);
+            throw new Error(`Failed to fetch audio from ${url} after all retries and proxies.`);
+        }
+
+        async function loadAudioToBuffer(url) {
+            const audioCTX = new AudioContext({ sampleRate: 16000 });
+            
+            console.log(`[Audio] Starting to load audio buffer for: ${url}`);
+            const response = await fetchWithProxiesAndRetries(url);
+            
+            console.log(`[Audio] Fetch successful. Decoding audio data for: ${response.url}`);
+            const arrayBuffer = await response.arrayBuffer();
+            const decodedData = await audioCTX.decodeAudioData(arrayBuffer);
+            console.log(`[Audio] Successfully decoded audio data for: ${response.url}`);
+            return decodedData;
+        }
+
+        function formatDetailedScores(scores, weights) {
+            return Object.entries(scores).map(([key, value]) => {
+                const name = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+                const score = (value * 100).toFixed(1);
+                const weight = ((weights[key] || 0) * 100);
+                return `<li>${name.padEnd(22, ' ')}: ${score.padStart(5)} / 100 (weight: ${weight.toFixed(0)}%)</li>`;
+            }).join('');
+        }
+
+        function createVoiceCard(voice, index) {
+            return `
+                <div class="voice-card" id="voice-card-${index}">
+                    <div class="voice-title">${voice.title}</div>
+                    <div class="voice-script">"${voice.script}"</div>
+                    <div class="voice-score-container">
+                         <div class="score-header">
+                            <span class="score-label">Overall Quality Score</span>
+                            <button class="score-details-btn" id="details-btn-${index}" onclick="toggleScoreDetails(${index})" style="display:none;">Details</button>
+                        </div>
+                        <div class="score-value" id="score-value-${index}">Not yet analyzed</div>
+                        <div class="score-details" id="score-details-${index}">
+                             <p><strong>Overall Insights:</strong></p>
+                             <div id="insights-${index}"></div>
+
+                             <div class="analysis-breakdown" style="margin-top: 15px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.2);">
+                                <p><strong>Original Sample Analysis (Score: <span id="original-score-${index}">-</span>)</strong></p>
+                                 <p><em>Transcribed Text:</em></p>
+                                 <div class="transcribed-text-container"><span id="transcribed-text-${index}">...</span></div>
+                                 <p><strong>Score Breakdown:</strong></p>
+                                 <ul class="metric-list" id="detailed-scores-${index}"></ul>
+                             </div>
+                             
+                             <div class="analysis-breakdown" style="margin-top: 15px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.2);">
+                                 <p><strong>TTS Clone Analysis (Score: <span id="tts-score-${index}">-</span>)</strong></p>
+                                 <div id="tts-audio-player-container-${index}" style="margin-bottom: 10px; display: none;">
+                                     <p><em>Generated Clone Audio:</em></p>
+                                     <audio controls style="width: 100%; height: 35px; margin-top: 5px;"></audio>
+                                 </div>
+                                 <p><em>Transcribed Text:</em></p>
+                                 <div class="transcribed-text-container"><span id="tts-transcribed-text-${index}">...</span></div>
+                                 <p><strong>Score Breakdown:</strong></p>
+                                 <ul class="metric-list" id="tts-detailed-scores-${index}"></ul>
+                             </div>
+                        </div>
+                    </div>
+                    <div class="card-buttons">
+                        <button class="play-button" onclick="playVoice('${voice.file}', this)">
+                            ▶ Play
+                        </button>
+                        <button class="use-tts-button" onclick="selectForTTSFromCard('${voice.file}', '${voice.title}', ${index})">
+                            🎙️ Use
+                        </button>
+                        <button class="analyze-one-button" id="analyze-one-btn-${index}" onclick="analyzeSingleVoice(${index})">
+                            🔍 Analyze
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function playVoice(filename, button) {
+            // Stop current audio if playing
+            if (currentAudio) {
+                currentAudio.pause();
+                currentAudio.currentTime = 0;
+                if (currentButton) {
+                    currentButton.classList.remove('playing');
+                    currentButton.innerHTML = '▶ Play';
+                }
+            }
+
+            // If clicking the same button, just stop
+            if (currentButton === button) {
+                currentAudio = null;
+                currentButton = null;
+                return;
+            }
+
+            // Play new audio
+            currentAudio = new Audio(filename);
+            currentButton = button;
+            
+            button.classList.add('playing');
+            button.innerHTML = '⏸️ Playing...';
+            
+            currentAudio.play();
+            
+            currentAudio.onended = function() {
+                button.classList.remove('playing');
+                button.innerHTML = '▶ Play';
+                currentAudio = null;
+                currentButton = null;
+            };
+        }
+        window.playVoice = playVoice;
+
+        function stopAll() {
+            if (currentAudio) {
+                currentAudio.pause();
+                currentAudio.currentTime = 0;
+                if (currentButton) {
+                    currentButton.classList.remove('playing');
+                    currentButton.innerHTML = '▶ Play';
+                }
+                currentAudio = null;
+                currentButton = null;
+            }
+        }
+        window.stopAll = stopAll;
+
+        function playRandomFromCollection() {
+            stopAll();
+            const randomIndex = Math.floor(Math.random() * voices.length);
+            const buttons = document.querySelectorAll('.play-button');
+            playVoice(voices[randomIndex].file, buttons[randomIndex]);
+        }
+        window.playRandomFromCollection = playRandomFromCollection;
+
+        function selectForTTSFromCard(filename, title, index) {
+            // Switch to TTS tab
+            switchTab('tts');
+            
+            // Update dropdown selection
+            document.getElementById('voice-dropdown').value = index;
+            
+            // Select the voice
+            selectVoiceForTTS(index);
+            
+            // Highlight selected card
+            document.querySelectorAll('.voice-card').forEach(card => card.classList.remove('selected'));
+            document.getElementById(`voice-card-${index}`).classList.add('selected');
+        }
+        window.selectForTTSFromCard = selectForTTSFromCard;
+
+        async function analyzeSingleVoice(index) {
+            if (analysisInProgress) {
+                alert("Another analysis is already in progress. Please wait.");
+                return;
+            }
+            analysisInProgress = true;
+            
+            const button = document.getElementById(`analyze-one-btn-${index}`);
+            button.disabled = true;
+            button.innerHTML = 'Analyzing... <div class="spinner"></div>';
+            
+            const voice = voices[index];
+            const scoreEl = document.getElementById(`score-value-${index}`);
+            const detailsBtn = document.getElementById(`details-btn-${index}`);
+            
+            try {
+                // --- Part 1: Setup ---
+                const initialScoreText = scoreEl.textContent;
+                if (!initialScoreText.includes('%')) {
+                    scoreEl.innerHTML = 'Loading model...';
+                }
+
+                const transcriber = await Transcriber.getInstance((progress) => {
+                    if (!initialScoreText.includes('%')) {
+                        scoreEl.textContent = `Loading model... ${Math.round(progress.progress)}%`;
+                    }
+                });
+                
+                const analyzer = new VoiceSampleAnalyzer();
+                
+                // --- Part 2: Analyze Original Sample ---
+                scoreEl.innerHTML = 'Analyzing original... <div class="spinner"></div>';
+                const originalAudioBuffer = await loadAudioToBuffer(voice.file);
+                const originalAudioData = originalAudioBuffer.getChannelData(0);
+                const originalTranscriptionResult = await transcriber(originalAudioData, { language: 'english', task: 'transcribe' });
+                const originalTranscript = originalTranscriptionResult.text.trim();
+                const originalAnalysis = await analyzer.analyzeVoiceSample(originalAudioBuffer, voice.script, originalTranscript, { isTTSAnalysis: false });
+
+                // --- Part 3: Generate and Analyze TTS Clone ---
+                scoreEl.innerHTML = 'Generating clone... <div class="spinner"></div>';
+                const voiceUrl = await uploadAudioFile(voice.file);
+                const ttsResult = await websim.textToSpeech({
+                    text: voice.script,
+                    voice_sample: voiceUrl
+                });
+
+                // --- New: Add audio player for the generated clone ---
+                const ttsAudioContainer = document.getElementById(`tts-audio-player-container-${index}`);
+                if (ttsAudioContainer) {
+                    const ttsAudioPlayer = ttsAudioContainer.querySelector('audio');
+                    ttsAudioPlayer.src = ttsResult.url;
+                    ttsAudioContainer.style.display = 'block';
+                }
+                // --------------------------------------------------------
+
+                scoreEl.innerHTML = 'Analyzing clone... <div class="spinner"></div>';
+                const ttsAudioBuffer = await loadAudioToBuffer(ttsResult.url);
+                const ttsAudioData = ttsAudioBuffer.getChannelData(0);
+                const ttsTranscriptionResult = await transcriber(ttsAudioData, { language: 'english', task: 'transcribe' });
+                const ttsTranscript = ttsTranscriptionResult.text.trim();
+                const ttsAnalysis = await analyzer.analyzeVoiceSample(ttsAudioBuffer, voice.script, ttsTranscript, { isTTSAnalysis: true });
+
+                // --- Part 4: Combine and Display Results ---
+                const combinedScore = Math.round((originalAnalysis.overallScore * 0.6) + (ttsAnalysis.overallScore * 0.4));
+                
+                scoreEl.textContent = `${combinedScore} / 100`;
+                scoreEl.classList.add('analyzed');
+                
+                if (combinedScore > 80) scoreEl.style.color = '#2ecc71';
+                else if (combinedScore > 60) scoreEl.style.color = '#f1c40f';
+                else scoreEl.style.color = '#e74c3c';
+
+                // Populate details for original sample
+                document.getElementById(`original-score-${index}`).textContent = `${originalAnalysis.overallScore} / 100`;
+                document.getElementById(`transcribed-text-${index}`).textContent = `"${originalTranscript || '...'}"`;
+                document.getElementById(`detailed-scores-${index}`).innerHTML = formatDetailedScores(originalAnalysis.detailedScores, originalAnalysis.weightsUsed);
+                
+                // Populate details for TTS clone
+                document.getElementById(`tts-score-${index}`).textContent = `${ttsAnalysis.overallScore} / 100`;
+                document.getElementById(`tts-transcribed-text-${index}`).textContent = `"${ttsTranscript || '...'}"`;
+                document.getElementById(`tts-detailed-scores-${index}`).innerHTML = formatDetailedScores(ttsAnalysis.detailedScores, ttsAnalysis.weightsUsed);
+
+                // Combine insights
+                const combinedInsights = [
+                    ...originalAnalysis.insights, 
+                    ...ttsAnalysis.insights.map(i => `[TTS Clone] ${i}`)
+                ];
+                const uniqueInsights = [...new Set(combinedInsights)];
+                const insightsContainer = document.getElementById(`insights-${index}`);
+                if (uniqueInsights.length > 0) {
+                    insightsContainer.innerHTML = '<ul>' + uniqueInsights.map(insight => `<li>${insight}</li>`).join('') + '</ul>';
+                } else {
+                    insightsContainer.innerHTML = '<ul><li>✅ Looks great! This is a high-quality sample.</li></ul>';
+                }
+
+                if(detailsBtn) detailsBtn.style.display = 'inline-block';
+
+            } catch (e) {
+                console.error(`Error analyzing ${voice.title}:`, e);
+                scoreEl.textContent = 'Error';
+                scoreEl.style.color = '#e74c3c';
+            } finally {
+                analysisInProgress = false;
+                button.disabled = false;
+                button.innerHTML = '🔍 Analyze';
+            }
+        }
+        window.analyzeSingleVoice = analyzeSingleVoice;
+
+        // A singleton class for the transcriber
+        class Transcriber {
+            static task = 'automatic-speech-recognition';
+            static model = 'Xenova/whisper-tiny.en';
+            static instance = null;
+
+            static async getInstance(progress_callback = null) {
+                if (this.instance === null) {
+                    this.instance = pipeline(this.task, this.model, { progress_callback });
+                }
+                return this.instance;
+            }
+        }
+
+        async function generateTTS() {
+            const text = document.getElementById('tts-text').value.trim();
+            const generateBtn = document.getElementById('generate-tts-btn');
+            const ttsOutput = document.getElementById('tts-output');
+            const audioPlayer = ttsOutput.querySelector('audio');
+
+            if (!selectedVoiceForTTS) {
+                alert('Please select a voice first.');
+                return;
+            }
+
+            if (!text) {
+                alert('Please enter some text to generate speech.');
+                return;
+            }
+
+            // Set loading state
+            generateBtn.disabled = true;
+            generateBtn.innerHTML = 'Generating... <div class="spinner"></div>';
+
+            try {
+                // Upload the audio file first to get a URL
+                const voiceUrl = await uploadAudioFile(selectedVoiceForTTS.file);
+                
+                const result = await websim.textToSpeech({
+                    text: text,
+                    voice_sample: voiceUrl
+                });
+
+                audioPlayer.src = result.url;
+                ttsOutput.style.display = 'block';
+                audioPlayer.play();
+
+                // Save to database
+                await room.collection('generated_voice').create({
+                    text: text,
+                    voice_type: selectedVoiceForTTS.title,
+                    audio_url: result.url,
+                    voice_sample_file: selectedVoiceForTTS.file,
+                    username: (await websim.auth.profile).username
+                });
+
+                // Clear the text area after successful generation
+                document.getElementById('tts-text').value = '';
+
+            } catch (error) {
+                console.error('TTS Generation Error:', error);
+                alert('Sorry, there was an error generating the speech. Please try again.');
+            } finally {
+                // Reset button
+                generateBtn.disabled = false;
+                generateBtn.innerHTML = 'Generate Speech';
+            }
+        }
+        
+        // Event Listeners
+        document.getElementById('generate-tts-btn').addEventListener('click', generateTTS);
+
+        // --- Enhanced Voice Sample Scoring System ---
+        class VoiceSampleAnalyzer {
+            constructor() {
+                this.baseWeights = {
+                    transcriptAccuracy: 0.25,
+                    audioQuality: 0.20,
+                    speechClarity: 0.15,
+                    prosody: 0.15,
+                    contentQuality: 0.15,
+                    technicalSuitability: 0.10
+                };
+                this.weights = { ...this.baseWeights }; // Initialize with base weights
+            }
+
+            adjustWeights(wordCount, isTTSAnalysis = false) {
+                const base = this.baseWeights;
+                let newWeights = { ...base };
+
+                // Step 1: Adjust for word count. Longer samples can have less accuracy weight.
+                const shiftFactor = Math.min(1.0, Math.max(0, (wordCount - 10) / 40));
+                const weightToShift = 0.10 * shiftFactor;
+                newWeights.transcriptAccuracy -= weightToShift;
+                newWeights.contentQuality += weightToShift;
+                
+                // Step 2: Adjust for TTS analysis if applicable
+                if (isTTSAnalysis) {
+                    // For TTS analysis, accuracy is paramount.
+                    // We increase accuracy weight significantly and proportionally reduce others.
+                    const accuracyTarget = 0.60; // Target weight for accuracy
+                    const currentAccuracyWeight = newWeights.transcriptAccuracy;
+                    const accuracyIncrease = accuracyTarget - currentAccuracyWeight;
+                    
+                    newWeights.transcriptAccuracy = accuracyTarget;
+
+                    const totalOtherWeight = 1.0 - currentAccuracyWeight;
+                    if (totalOtherWeight > 0) {
+                        for (const key in newWeights) {
+                            if (key !== 'transcriptAccuracy') {
+                                const proportion = newWeights[key] / totalOtherWeight;
+                                newWeights[key] -= accuracyIncrease * proportion;
+                            }
+                        }
+                    }
+                }
+                
+                // Final check to ensure weights sum to 1
+                const currentTotal = Object.values(newWeights).reduce((sum, w) => sum + w, 0);
+                if (Math.abs(1.0 - currentTotal) > 1e-6) {
+                    console.warn("Weight adjustment resulted in non-unity total. Resetting to prevent error.", newWeights, currentTotal);
+                    this.weights = { ...this.baseWeights };
+                } else {
+                    this.weights = newWeights;
+                }
+            }
+
+            async analyzeVoiceSample(audioBuffer, expectedScript, transcribedText, options = {}) {
+                // Adjust weights based on the transcribed word count *before* calculating scores.
+                const wordCount = transcribedText.trim().split(/\s+/).filter(Boolean).length;
+                this.adjustWeights(wordCount, options.isTTSAnalysis);
+
+                const scores = {
+                    transcriptAccuracy: this.calculateTranscriptAccuracy(expectedScript, transcribedText),
+                    audioQuality: await this.calculateAudioQuality(audioBuffer),
+                    speechClarity: await this.calculateSpeechClarity(audioBuffer, transcribedText),
+                    prosody: await this.calculateProsodyScore(audioBuffer, transcribedText),
+                    contentQuality: this.calculateContentQuality(transcribedText, expectedScript),
+                    technicalSuitability: await this.calculateTechnicalSuitability(audioBuffer)
+                };
+
+                const weightedScore = Object.keys(scores).reduce((total, key) => {
+                    // Use the dynamically adjusted weights for scoring
+                    return total + (scores[key] * (this.weights[key] || 0));
+                }, 0);
+
+                return {
+                    overallScore: Math.round(weightedScore * 100),
+                    detailedScores: scores,
+                    insights: this.generateInsights(scores),
+                    weightsUsed: { ...this.weights } // Return a copy of the weights used for this analysis
+                };
+            }
+
+            calculateTranscriptAccuracy(expected, transcribed) {
+                const distance = this.levenshtein(expected.toLowerCase(), transcribed.toLowerCase());
+                const maxLength = Math.max(expected.length, transcribed.length);
+                return maxLength === 0 ? 1 : Math.max(0, 1 - distance / maxLength);
+            }
+
+            async calculateAudioQuality(audioBuffer) {
+                const audioData = audioBuffer.getChannelData(0);
+                const sampleRate = audioBuffer.sampleRate;
+                
+                const snr = this.estimateSNR(audioData);
+                const snrScore = Math.min(1, Math.max(0, (snr - 10) / 30));
+                
+                const dynamicRange = this.calculateDynamicRange(audioData);
+                const dynamicScore = Math.min(1, dynamicRange / 60);
+                
+                const clippingRatio = this.detectClipping(audioData);
+                const clippingScore = Math.max(0, 1 - clippingRatio * 10);
+                
+                const spectrumScore = await this.analyzeFrequencySpectrum(audioData, sampleRate);
+                
+                return (snrScore + dynamicScore + clippingScore + spectrumScore) / 4;
+            }
+
+            async calculateSpeechClarity(audioBuffer, transcribedText) {
+                const audioData = audioBuffer.getChannelData(0);
+                
+                const zcr = this.calculateZeroCrossingRate(audioData);
+                // Relaxed ZCR scoring. Punishes extremely high ZCR which often indicates noise.
+                const zcrScore = 1 - Math.min(1, zcr * 2.5);
+                
+                const spectralCentroid = await this.calculateSpectralCentroid(audioData, audioBuffer.sampleRate);
+                const centroidScore = this.normalizeSpectralCentroid(spectralCentroid);
+
+                const articulationScore = this.estimateArticulation(audioBuffer.duration, transcribedText);
+                
+                return (zcrScore + centroidScore + articulationScore) / 3;
+            }
+
+            async calculateProsodyScore(audioBuffer, transcribedText) {
+                const audioData = audioBuffer.getChannelData(0);
+                
+                const energyVariation = this.calculateEnergyVariation(audioData);
+                const pitchScore = Math.min(1, energyVariation * 20);
+                
+                const speakingRate = this.estimateSpeakingRate(transcribedText, audioBuffer.duration);
+                const rateScore = this.normalizeSpeakingRate(speakingRate);
+                
+                const pauseScore = this.analyzePausePatterns(audioData);
+                
+                return (pitchScore + rateScore + pauseScore) / 3;
+            }
+
+            calculateContentQuality(transcribedText, expectedScript) {
+                const words = transcribedText.toLowerCase().split(/\s+/).filter(w => w.length > 0);
+                
+                const wordCount = words.length;
+                const wordCountScore = Math.min(1, Math.log(wordCount + 1) / Math.log(51));
+                
+                const uniqueWords = new Set(words);
+                const diversityScore = uniqueWords.size / Math.max(wordCount, 1);
+                
+                const phoneticScore = this.calculatePhoneticCoverage(transcribedText);
+                
+                const complexityScore = this.analyzeSentenceComplexity(transcribedText);
+                
+                return (wordCountScore + diversityScore + phoneticScore + complexityScore) / 4;
+            }
+
+            async calculateTechnicalSuitability(audioBuffer) {
+                const duration = audioBuffer.duration;
+                const durationScore = this.normalizeDuration(duration);
+
+                const audioData = audioBuffer.getChannelData(0);
+                const noiseScore = Math.min(1, Math.max(0, (this.estimateSNR(audioData) - 5) / 25));
+                
+                return (durationScore + noiseScore) / 2;
+            }
+            
+            levenshtein(s1, s2) {
+                const costs = [];
+                for (let i = 0; i <= s1.length; i++) {
+                    let lastValue = i;
+                    for (let j = 0; j <= s2.length; j++) {
+                        if (i === 0) costs[j] = j;
+                        else if (j > 0) {
+                            let newValue = costs[j - 1];
+                            if (s1.charAt(i - 1) !== s2.charAt(j - 1)) newValue = Math.min(Math.min(newValue, lastValue), costs[j]) + 1;
+                            costs[j - 1] = lastValue;
+                            lastValue = newValue;
+                        }
+                    }
+                    if (i > 0) costs[s2.length] = lastValue;
+                }
+                return costs[s2.length];
+            }
+
+            estimateSNR(audioData) {
+                const signalPower = audioData.reduce((sum, s) => sum + s * s, 0) / audioData.length;
+                if (signalPower === 0) return 0;
+                const sorted = [...audioData].map(Math.abs).sort((a, b) => a - b);
+                const noiseFloor = sorted[Math.floor(sorted.length * 0.1)]; // Assume lowest 10% is noise
+                const noisePower = noiseFloor * noiseFloor;
+                return 10 * Math.log10(signalPower / (noisePower + 1e-10));
+            }
+
+            calculateDynamicRange(audioData) {
+                let max = 0, min = 1;
+                for(let i=0; i<audioData.length; i++) {
+                    const absSample = Math.abs(audioData[i]);
+                    if(absSample > max) max = absSample;
+                    if(absSample < min) min = absSample;
+                }
+                return 20 * Math.log10(max / (min + 1e-10));
+            }
+
+            detectClipping(audioData) {
+                const clippedSamples = audioData.filter(s => Math.abs(s) >= 0.98).length;
+                return clippedSamples / audioData.length;
+            }
+
+            calculateZeroCrossingRate(audioData) {
+                let crossings = 0;
+                for (let i = 1; i < audioData.length; i++) {
+                    if ((audioData[i] >= 0) !== (audioData[i - 1] >= 0)) crossings++;
+                }
+                return crossings / (audioData.length - 1);
+            }
+
+            estimateArticulation(sampleLength, text) {
+                const charCount = text.replace(/\s/g, '').length;
+                if (charCount === 0) return 0;
+                const articulationRate = sampleLength / charCount; // samples per character
+                return Math.min(1, Math.max(0, 1 - Math.abs(articulationRate - 400) / 400));
+            }
+
+            calculateEnergyVariation(audioData) {
+                const frameSize = 1024;
+                const energies = [];
+                for(let i = 0; i < audioData.length; i += frameSize) {
+                    const frame = audioData.slice(i, i + frameSize);
+                    const energy = frame.reduce((sum, s) => sum + s*s, 0) / frame.length;
+                    energies.push(energy);
+                }
+                const meanEnergy = energies.reduce((sum, e) => sum + e, 0) / energies.length;
+                const variance = energies.reduce((sum, e) => sum + (e-meanEnergy)*(e-meanEnergy), 0) / energies.length;
+                return Math.sqrt(variance);
+            }
+
+            estimateSpeakingRate(text, duration) {
+                const words = text.split(/\s+/).filter(Boolean).length;
+                return words / duration;
+            }
+
+            normalizeSpeakingRate(rate) {
+                // Ideal is 2-4 words/sec
+                if (rate > 2 && rate < 4) return 1.0;
+                if (rate < 1 || rate > 6) return 0.2;
+                if (rate <= 2) return 0.5 + (rate - 1) * 0.5;
+                return Math.max(0.2, 1 - (rate - 4) * 0.4);
+            }
+
+            analyzePausePatterns(audioData) {
+                const threshold = 0.01;
+                const silentFrames = audioData.filter(s => Math.abs(s) < threshold).length;
+                const silenceRatio = silentFrames / audioData.length;
+                // ideal silence ratio around 10-25%
+                return Math.min(1, Math.max(0, 1 - Math.abs(silenceRatio - 0.175) / 0.175));
+            }
+            
+            calculatePhoneticCoverage(text) {
+                const commonPhonemes = ['th', 'sh', 'ch', 'ng', 'st', 'nd', 'nt', 'er', 'ing', 'ed'];
+                const foundPhonemes = commonPhonemes.filter(p => text.toLowerCase().includes(p));
+                return foundPhonemes.length / commonPhonemes.length;
+            }
+
+            analyzeSentenceComplexity(text) {
+                const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0);
+                if (sentences.length === 0) return 0;
+                const avgWords = text.split(/\s+/).length / sentences.length;
+                return Math.min(1, Math.max(0, 1 - Math.abs(avgWords - 12.5) / 12.5));
+            }
+
+            normalizeDuration(duration) {
+                if (duration < 3) return 0.3;
+                if (duration > 60) return 0.5;
+                if (duration >= 5 && duration <= 30) return 1;
+                if (duration < 5) return 0.6 + (duration - 3) * 0.2;
+                return Math.max(0.5, 1 - (duration - 30) / 60);
+            }
+
+            generateInsights(scores) {
+                const insights = [];
+                if (scores.transcriptAccuracy < 0.8) insights.push("Clearer pronunciation would improve transcript accuracy.");
+                if (scores.audioQuality < 0.7) insights.push("Audio quality could be improved (check for noise/clipping).");
+                if (scores.prosody < 0.6) insights.push("More expressive delivery (varied pitch/pace) is recommended.");
+                if (scores.contentQuality < 0.7) insights.push("Longer text with more diverse vocabulary would be beneficial.");
+                if (scores.technicalSuitability < 0.8) insights.push("Sample duration or noise level may be suboptimal for training.");
+                return insights;
+            }
+
+            async analyzeFrequencySpectrum(audioData, sampleRate) { return 0.8; } // Placeholder
+            async calculateSpectralCentroid(audioData, sampleRate) { return 2000; } // Placeholder Hz
+            normalizeSpectralCentroid(c) { return Math.min(1, Math.max(0, 1 - Math.abs(c - 2000) / 2000)); }
+        }
+
+        async function analyzeVoiceScores() {
+            if (analysisInProgress) {
+                 alert("Analysis is already in progress.");
+                 return;
+            }
+            analysisInProgress = true;
+            const analyzeBtn = document.getElementById('analyze-btn');
+            analyzeBtn.disabled = true;
+            analyzeBtn.innerHTML = 'Analyzing... <div class="spinner"></div>';
+
+            try {
+                for (const [i, voice] of voices.entries()) {
+                    const scoreEl = document.getElementById(`score-value-${i}`);
+                    if (scoreEl && !scoreEl.classList.contains('analyzed')) {
+                        scoreEl.innerHTML = 'Loading model...';
+                    }
+                }
+
+                const transcriber = await Transcriber.getInstance((progress) => {
+                     for (const [i, voice] of voices.entries()) {
+                        const scoreEl = document.getElementById(`score-value-${i}`);
+                        if (scoreEl && !scoreEl.classList.contains('analyzed')) {
+                           scoreEl.textContent = `Loading model... ${Math.round(progress.progress)}%`;
+                        }
+                    }
+                });
+                
+                const analyzer = new VoiceSampleAnalyzer();
+
+                for (const [i, voice] of voices.entries()) {
+                    const button = document.getElementById(`analyze-one-btn-${i}`);
+                    button.disabled = true;
+
+                    const scoreEl = document.getElementById(`score-value-${i}`);
+                    const detailsBtn = document.getElementById(`details-btn-${i}`);
+                    
+                    try {
+                        // --- Part 2: Analyze Original Sample ---
+                        scoreEl.innerHTML = 'Analyzing original... <div class="spinner"></div>';
+                        const originalAudioBuffer = await loadAudioToBuffer(voice.file);
+                        const originalAudioData = originalAudioBuffer.getChannelData(0);
+                        const originalTranscriptionResult = await transcriber(originalAudioData, { language: 'english', task: 'transcribe' });
+                        const originalTranscript = originalTranscriptionResult.text.trim();
+                        const originalAnalysis = await analyzer.analyzeVoiceSample(originalAudioBuffer, voice.script, originalTranscript, { isTTSAnalysis: false });
+
+                        // --- Part 3: Generate and Analyze TTS Clone ---
+                        scoreEl.innerHTML = 'Generating clone... <div class="spinner"></div>';
+                        const voiceUrl = await uploadAudioFile(voice.file);
+                        const ttsResult = await websim.textToSpeech({
+                            text: voice.script,
+                            voice_sample: voiceUrl
+                        });
+
+                        // --- New: Add audio player for the generated clone ---
+                        const ttsAudioContainer = document.getElementById(`tts-audio-player-container-${i}`);
+                        if (ttsAudioContainer) {
+                            const ttsAudioPlayer = ttsAudioContainer.querySelector('audio');
+                            ttsAudioPlayer.src = ttsResult.url;
+                            ttsAudioContainer.style.display = 'block';
+                        }
+                        // --------------------------------------------------------
+
+                        scoreEl.innerHTML = 'Analyzing clone... <div class="spinner"></div>';
+                        const ttsAudioBuffer = await loadAudioToBuffer(ttsResult.url);
+                        const ttsAudioData = ttsAudioBuffer.getChannelData(0);
+                        const ttsTranscriptionResult = await transcriber(ttsAudioData, { language: 'english', task: 'transcribe' });
+                        const ttsTranscript = ttsTranscriptionResult.text.trim();
+                        const ttsAnalysis = await analyzer.analyzeVoiceSample(ttsAudioBuffer, voice.script, ttsTranscript, { isTTSAnalysis: true });
+
+                        // --- Part 4: Combine and Display Results ---
+                        const combinedScore = Math.round((originalAnalysis.overallScore * 0.6) + (ttsAnalysis.overallScore * 0.4));
+                        
+                        scoreEl.textContent = `${combinedScore} / 100`;
+                        scoreEl.classList.add('analyzed');
+                        
+                        if (combinedScore > 80) scoreEl.style.color = '#2ecc71';
+                        else if (combinedScore > 60) scoreEl.style.color = '#f1c40f';
+                        else scoreEl.style.color = '#e74c3c';
+
+                        // Populate details for original sample
+                        document.getElementById(`original-score-${i}`).textContent = `${originalAnalysis.overallScore} / 100`;
+                        document.getElementById(`transcribed-text-${i}`).textContent = `"${originalTranscript || '...'}"`;
+                        document.getElementById(`detailed-scores-${i}`).innerHTML = formatDetailedScores(originalAnalysis.detailedScores, originalAnalysis.weightsUsed);
+                        
+                        // Populate details for TTS clone
+                        document.getElementById(`tts-score-${i}`).textContent = `${ttsAnalysis.overallScore} / 100`;
+                        document.getElementById(`tts-transcribed-text-${i}`).textContent = `"${ttsTranscript || '...'}"`;
+                        document.getElementById(`tts-detailed-scores-${i}`).innerHTML = formatDetailedScores(ttsAnalysis.detailedScores, ttsAnalysis.weightsUsed);
+
+                        // Combine insights
+                        const combinedInsights = [
+                            ...originalAnalysis.insights, 
+                            ...ttsAnalysis.insights.map(insight => `[TTS Clone] ${insight}`)
+                        ];
+                        const uniqueInsights = [...new Set(combinedInsights)];
+                        const insightsContainer = document.getElementById(`insights-${i}`);
+                        if (uniqueInsights.length > 0) {
+                            insightsContainer.innerHTML = '<ul>' + uniqueInsights.map(insight => `<li>${insight}</li>`).join('') + '</ul>';
+                        } else {
+                            insightsContainer.innerHTML = '<ul><li>✅ Looks great! This is a high-quality sample.</li></ul>';
+                        }
+                        
+                        if(detailsBtn) detailsBtn.style.display = 'inline-block';
+
+                    } catch (e) {
+                        console.error(`Error analyzing ${voice.title}:`, e);
+                        scoreEl.textContent = 'Error';
+                        scoreEl.style.color = '#e74c3c';
+                    } finally {
+                        button.disabled = false;
+                        button.innerHTML = '🔍 Analyze';
+                    }
+                }
+            } catch (error) {
+                console.error("Failed to initialize the transcriber model:", error);
+                alert("Could not load the analysis model. Please refresh and try again.");
+                for (const [i, voice] of voices.entries()) {
+                     const scoreEl = document.getElementById(`score-value-${i}`);
+                     if (scoreEl && !scoreEl.classList.contains('analyzed')) {
+                        scoreEl.textContent = 'Model load failed';
+                     }
+                }
+            } finally {
+                analysisInProgress = false;
+                analyzeBtn.disabled = false;
+                analyzeBtn.innerHTML = '🔍 Analyze All Voices';
+            }
+        }
+        window.analyzeVoiceScores = analyzeVoiceScores;
+        
+        function toggleScoreDetails(index) {
+            const detailsEl = document.getElementById(`score-details-${index}`);
+            const btn = document.getElementById(`details-btn-${index}`);
+            if (detailsEl.style.display === 'none') {
+                detailsEl.style.display = 'block';
+                btn.textContent = 'Hide';
+            } else {
+                detailsEl.style.display = 'none';
+                btn.textContent = 'Details';
+            }
+        }
+        window.toggleScoreDetails = toggleScoreDetails;
+
+        // Initialize the page
+        populateVoiceDropdown();
+        document.getElementById('voicesGrid').innerHTML = voices.map(createVoiceCard).join('');
+        
+        function renderGallery(voices) {
+            const container = document.getElementById('galleryContainer');
+            if (voices.length === 0) {
+                container.innerHTML = '<p style="text-align: center; opacity: 0.7;">No generated voices yet. Be the first to create one!</p>';
+                return;
+            }
+
+            container.innerHTML = voices.reverse().map(voice => `
+                <div class="gallery-item">
+                    <div class="gallery-header">
+                        <img src="https://images.websim.com/avatar/${voice.username}" alt="${voice.username}" class="user-avatar">
+                        <div class="gallery-info">
+                            <div class="username">@${voice.username}</div>
+                            <div class="voice-type">${voice.voice_type}</div>
+                            <div class="timestamp">${new Date(voice.created_at).toLocaleDateString()}</div>
+                        </div>
+                    </div>
+                    <div class="gallery-text">"${voice.text}"</div>
+                    <audio controls class="gallery-audio">
+                        <source src="${voice.audio_url}" type="audio/wav">
+                    </audio>
+                </div>
+            `).join('');
+        }
+
+        // Subscribe to gallery updates
+        room.collection('generated_voice').subscribe(renderGallery);
+    </script>
 <script defer src="https://static.cloudflareinsights.com/beacon.min.js/v8c78df7c7c0f484497ecbca7046644da1771523124516" integrity="sha512-8DS7rgIrAmghBFwoOTujcf6D9rXvH8xm8JQ1Ja01h9QX8EzXldiszufYa4IFfKdLUKTTrnSFXLDkUEOTrZQ8Qg==" data-cf-beacon='{"version":"2024.11.0","token":"4c6229722a6346bc8eb5cb0e5eae5d41","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
 </body>
 </html>
