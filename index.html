@@ -1033,12 +1033,13 @@
                 const audioData = audioBuffer.getChannelData(0);
                 
                 const zcr = this.calculateZeroCrossingRate(audioData);
-                const zcrScore = 1 - Math.min(1, zcr * 5); 
+                // Relaxed ZCR scoring. Punishes extremely high ZCR which often indicates noise.
+                const zcrScore = 1 - Math.min(1, zcr * 2.5);
                 
                 const spectralCentroid = await this.calculateSpectralCentroid(audioData, audioBuffer.sampleRate);
                 const centroidScore = this.normalizeSpectralCentroid(spectralCentroid);
 
-                const articulationScore = this.estimateArticulation(audioData.length, transcribedText);
+                const articulationScore = this.estimateArticulation(audioBuffer.duration, transcribedText);
                 
                 return (zcrScore + centroidScore + articulationScore) / 3;
             }
@@ -1223,7 +1224,11 @@
             try {
                 for (const [i, voice] of voices.entries()) {
                     const scoreEl = document.getElementById(`score-value-${i}`);
-                    if (scoreEl) scoreEl.innerHTML = 'Loading model...';
+                    if (scoreEl) {
+                        if (!scoreEl.classList.contains('analyzed')) {
+                           scoreEl.innerHTML = 'Loading model...';
+                        }
+                    }
                 }
 
                 const transcriber = await Transcriber.getInstance((progress) => {
@@ -1290,7 +1295,10 @@
                 console.error("Failed to initialize the transcriber model:", error);
                 alert("Could not load the analysis model. Please refresh and try again.");
                 for (const [i, voice] of voices.entries()) {
-                     document.getElementById(`score-value-${i}`).textContent = 'Model load failed';
+                     const scoreEl = document.getElementById(`score-value-${i}`);
+                     if (scoreEl && !scoreEl.classList.contains('analyzed')) {
+                        scoreEl.textContent = 'Model load failed';
+                     }
                 }
             } finally {
                 analysisInProgress = false;
