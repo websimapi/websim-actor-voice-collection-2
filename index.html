@@ -816,10 +816,10 @@
                         </div>
                         <div class="score-value" id="score-value-${index}">Not yet analyzed</div>
                         <div class="score-details" id="score-details-${index}">
-                             <p><strong>Transcribed (Original):</strong> <span id="transcribed-text-${index}"></span></p>
+                             <p><strong>Analysis Breakdown:</strong></p>
+                             <div id="analysis-breakdown-${index}"></div>
+                             <p><strong>Insights:</strong></p>
                              <div id="insights-${index}"></div>
-                             <p><strong>Score Breakdown:</strong></p>
-                             <ul class="metric-list" id="detailed-scores-${index}"></ul>
                         </div>
                     </div>
                     <div class="card-buttons">
@@ -923,121 +923,12 @@
             button.innerHTML = 'Analyzing... <div class="spinner"></div>';
             
             const voice = voices[index];
-            const scoreEl = document.getElementById(`score-value-${index}`);
-            const detailsBtn = document.getElementById(`details-btn-${index}`);
             
             try {
-                const initialScoreText = scoreEl.textContent;
-                if (!initialScoreText.includes('%')) {
-                    scoreEl.innerHTML = 'Loading model...';
-                }
-
-                const transcriber = await Transcriber.getInstance((progress) => {
-                    if (!initialScoreText.includes('%')) {
-                        scoreEl.textContent = `Loading model... ${Math.round(progress.progress)}%`;
-                    }
-                });
-                
-                // --- Stage 1: Analyze Original Sample ---
-                scoreEl.innerHTML = 'Analyzing Original... (1/2) <div class="spinner"></div>';
-                const originalAnalyzer = new VoiceSampleAnalyzer();
-                const audioCTX = new AudioContext({ sampleRate: 16000 });
-                
-                const response = await fetch(voice.file);
-                const arrayBuffer = await response.arrayBuffer();
-                const audioBuffer = await audioCTX.decodeAudioData(arrayBuffer);
-                
-                const audioData = audioBuffer.getChannelData(0);
-                
-                const result = await transcriber(audioData, { language: 'english', task: 'transcribe' });
-                const transcript = result.text.trim();
-                
-                const originalAnalysis = await originalAnalyzer.analyzeVoiceSample(audioBuffer, voice.script, transcript);
-                document.getElementById(`transcribed-text-${index}`).textContent = `"${transcript}"`;
-
-                // --- Stage 2: Analyze TTS Cloneability ---
-                scoreEl.innerHTML = 'Analyzing Clone... (2/2) <div class="spinner"></div>';
-
-                const voiceUrl = await uploadAudioFile(voice.file);
-                const ttsResult = await websim.textToSpeech({
-                    text: voice.script,
-                    voice_sample: voiceUrl
-                });
-
-                // Create an audio element to load the data, avoiding direct fetch CORS issues.
-                const tempAudio = new Audio();
-                tempAudio.crossOrigin = "anonymous";
-                tempAudio.src = ttsResult.url;
-                
-                const ttsArrayBuffer = await new Promise((resolve, reject) => {
-                    tempAudio.addEventListener('canplaythrough', async () => {
-                        // Once the audio is loaded, fetch it again. It should be cached by the browser,
-                        // and this time the fetch will succeed without a CORS error.
-                        try {
-                            const response = await fetch(ttsResult.url);
-                            const buffer = await response.arrayBuffer();
-                            resolve(buffer);
-                        } catch(e) {
-                            reject(e);
-                        }
-                    });
-                    tempAudio.addEventListener('error', (e) => reject(new Error("Failed to load generated audio for analysis.")));
-                });
-                
-                const ttsAudioBuffer = await audioCTX.decodeAudioData(ttsArrayBuffer);
-
-                const ttsAudioData = ttsAudioBuffer.getChannelData(0);
-                const ttsTranscriptionResult = await transcriber(ttsAudioData, { language: 'english', task: 'transcribe' });
-                const ttsTranscript = ttsTranscriptionResult.text.trim();
-
-                const ttsAnalyzer = new VoiceSampleAnalyzer();
-                ttsAnalyzer.adjustWeightsForTTSAnalysis(); // Prioritize accuracy for the clone
-                const ttsAnalysis = await ttsAnalyzer.analyzeVoiceSample(ttsAudioBuffer, voice.script, ttsTranscript);
-
-                // --- Stage 3: Combine Scores & Update UI ---
-                const finalScore = Math.round(originalAnalysis.overallScore * 0.7 + ttsAnalysis.overallScore * 0.3);
-
-                scoreEl.textContent = `${finalScore} / 100`;
-                scoreEl.classList.add('analyzed');
-
-                if (finalScore > 80) scoreEl.style.color = '#2ecc71';
-                else if (finalScore > 60) scoreEl.style.color = '#f1c40f';
-                else scoreEl.style.color = '#e74c3c';
-                
-                const insightsContainer = document.getElementById(`insights-${index}`);
-                const combinedInsights = [...originalAnalysis.insights, ...ttsAnalysis.insights.map(i => `[Clone] ${i}`)];
-                
-                if(combinedInsights.length > 0) {
-                    insightsContainer.innerHTML = '<ul>' + [...new Set(combinedInsights)].map(insight => `<li>${insight}</li>`).join('') + '</ul>';
-                } else {
-                    insightsContainer.innerHTML = '<ul><li>✅ Looks great! This is a high-quality sample.</li></ul>';
-                }
-
-                const detailsContainer = document.getElementById(`detailed-scores-${index}`);
-                const originalScoreBreakdown = Object.entries(originalAnalysis.detailedScores).map(([key, value]) => {
-                    const name = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
-                    const score = (value * 100).toFixed(1);
-                    return `<li>${('Orig: ' + name).padEnd(22, ' ')}: ${score.padStart(5)} / 100</li>`;
-                }).join('');
-
-                const ttsScoreBreakdown = Object.entries(ttsAnalysis.detailedScores).map(([key, value]) => {
-                    const name = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
-                    const score = (value * 100).toFixed(1);
-                    return `<li>${('Clone: ' + name).padEnd(22, ' ')}: ${score.padStart(5)} / 100</li>`;
-                }).join('');
-
-                detailsContainer.innerHTML = `
-                    <li><strong>Original Score: ${originalAnalysis.overallScore} (70% weight)</strong></li>
-                    ${originalScoreBreakdown}
-                    <li style="margin-top: 10px;"><strong>Clone Score: ${ttsAnalysis.overallScore} (30% weight)</strong></li>
-                    <li>Transcribed (Clone): "${ttsTranscript}"</li>
-                    ${ttsScoreBreakdown}
-                `;
-                
-                if(detailsBtn) detailsBtn.style.display = 'inline-block';
-
+                await performFullAnalysis(voice, index);
             } catch (e) {
                 console.error(`Error analyzing ${voice.title}:`, e);
+                const scoreEl = document.getElementById(`score-value-${index}`);
                 scoreEl.textContent = 'Error';
                 scoreEl.style.color = '#e74c3c';
             } finally {
@@ -1047,6 +938,76 @@
             }
         }
         window.analyzeSingleVoice = analyzeSingleVoice;
+
+        async function performFullAnalysis(voice, index) {
+            const scoreEl = document.getElementById(`score-value-${index}`);
+            const detailsBtn = document.getElementById(`details-btn-${index}`);
+            const insightsContainer = document.getElementById(`insights-${index}`);
+            const breakdownContainer = document.getElementById(`analysis-breakdown-${index}`);
+
+            // --- Part 1: Analyze Original Sample ---
+            scoreEl.innerHTML = 'Analyzing original...';
+            const audioCTX = new AudioContext({ sampleRate: 16000 });
+            const response = await fetch(voice.file);
+            const arrayBuffer = await response.arrayBuffer();
+            const originalAudioBuffer = await audioCTX.decodeAudioData(arrayBuffer);
+            
+            const transcriber = await Transcriber.getInstance();
+            const originalAudioData = originalAudioBuffer.getChannelData(0);
+            const originalTranscriptResult = await transcriber(originalAudioData, { language: 'english', task: 'transcribe' });
+            const originalTranscript = originalTranscriptResult.text.trim();
+
+            const originalAnalyzer = new VoiceSampleAnalyzer();
+            const originalAnalysis = await originalAnalyzer.analyzeVoiceSample(originalAudioBuffer, voice.script, originalTranscript);
+
+            // --- Part 2: Generate and Analyze TTS Clone ---
+            scoreEl.innerHTML = 'Generating clone...';
+            const voiceUrl = await uploadAudioFile(voice.file);
+            const ttsResult = await websim.textToSpeech({ text: voice.script, voice_sample: voiceUrl });
+
+            scoreEl.innerHTML = 'Analyzing clone...';
+            const ttsResponse = await fetch(ttsResult.url);
+            const ttsArrayBuffer = await ttsResponse.arrayBuffer();
+            const ttsAudioBuffer = await audioCTX.decodeAudioData(ttsArrayBuffer);
+
+            const ttsAudioData = ttsAudioBuffer.getChannelData(0);
+            const ttsTranscriptResult = await transcriber(ttsAudioData, { language: 'english', task: 'transcribe' });
+            const ttsTranscript = ttsTranscriptResult.text.trim();
+
+            const ttsAnalyzer = new VoiceSampleAnalyzer();
+            ttsAnalyzer.setWeightsPreset('tts-accuracy');
+            const ttsAnalysis = await ttsAnalyzer.analyzeVoiceSample(ttsAudioBuffer, voice.script, ttsTranscript);
+
+            // --- Part 3: Combine Scores and Display ---
+            const finalScore = Math.round(originalAnalysis.overallScore * 0.6 + ttsAnalysis.overallScore * 0.4);
+            
+            scoreEl.textContent = `${finalScore} / 100`;
+            scoreEl.classList.add('analyzed');
+
+            if (finalScore > 80) scoreEl.style.color = '#2ecc71';
+            else if (finalScore > 60) scoreEl.style.color = '#f1c40f';
+            else scoreEl.style.color = '#e74c3c';
+
+            // Combined insights
+            const combinedInsights = [...new Set([...originalAnalysis.insights, ...ttsAnalysis.insights])];
+             if(combinedInsights.length > 0) {
+                insightsContainer.innerHTML = '<ul>' + combinedInsights.map(insight => `<li>${insight}</li>`).join('') + '</ul>';
+            } else {
+                insightsContainer.innerHTML = '<ul><li>✅ Looks great! This is a high-quality sample.</li></ul>';
+            }
+            
+            // Detailed breakdown
+            breakdownContainer.innerHTML = `
+                <ul class="metric-list">
+                    <li>Original Sample Score: ${originalAnalysis.overallScore} / 100 (60% weight)</li>
+                    <li>Cloned Sample Score: ${ttsAnalysis.overallScore} / 100 (40% weight)</li>
+                </ul>
+                <p><strong>Original Transcription:</strong> "${originalTranscript}"</p>
+                <p><strong>Cloned Transcription:</strong> "${ttsTranscript}"</p>
+            `;
+
+            if(detailsBtn) detailsBtn.style.display = 'inline-block';
+        }
 
         // A singleton class for the transcriber
         class Transcriber {
@@ -1134,21 +1095,19 @@
                 this.weights = { ...this.baseWeights }; // Initialize with base weights
             }
 
-            adjustWeightsForTTSAnalysis() {
-                // For TTS analysis, accuracy to the prompt is paramount.
-                const newWeights = { ...this.baseWeights };
-                newWeights.transcriptAccuracy = 0.50; // Increase accuracy weight significantly
-
-                // Reduce other weights proportionally to make room for the increase.
-                const remainingWeight = 1.0 - newWeights.transcriptAccuracy; // 0.5
-                const originalRemainingWeight = 1.0 - this.baseWeights.transcriptAccuracy; // 0.75
-                
-                for (const key in newWeights) {
-                    if (key !== 'transcriptAccuracy') {
-                        newWeights[key] = (this.baseWeights[key] / originalRemainingWeight) * remainingWeight;
-                    }
+            setWeightsPreset(preset) {
+                if (preset === 'tts-accuracy') {
+                    this.weights = {
+                        transcriptAccuracy: 0.60,
+                        audioQuality: 0.10,
+                        speechClarity: 0.10,
+                        prosody: 0.05,
+                        contentQuality: 0.10,
+                        technicalSuitability: 0.05
+                    };
+                } else {
+                    this.weights = { ...this.baseWeights };
                 }
-                this.weights = newWeights;
             }
 
             adjustWeightsForWordCount(wordCount) {
@@ -1202,7 +1161,7 @@
                 return {
                     overallScore: Math.round(weightedScore * 100),
                     detailedScores: scores,
-                    insights: this.generateInsights(scores, transcribedText, expectedScript)
+                    insights: this.generateInsights(scores)
                 };
             }
 
@@ -1397,16 +1356,13 @@
                 return Math.max(0.5, 1 - (duration - 30) / 60);
             }
 
-            generateInsights(scores, transcribedText, expectedScript) {
+            generateInsights(scores) {
                 const insights = [];
                 if (scores.transcriptAccuracy < 0.8) insights.push("Clearer pronunciation would improve transcript accuracy.");
                 if (scores.audioQuality < 0.7) insights.push("Audio quality could be improved (check for noise/clipping).");
                 if (scores.prosody < 0.6) insights.push("More expressive delivery (varied pitch/pace) is recommended.");
                 if (scores.contentQuality < 0.7) insights.push("Longer text with more diverse vocabulary would be beneficial.");
                 if (scores.technicalSuitability < 0.8) insights.push("Sample duration or noise level may be suboptimal for training.");
-                if (scores.transcriptAccuracy < 0.95 && transcribedText.toLowerCase() === expectedScript.toLowerCase()) {
-                    insights.push("Transcription was perfect, but other quality factors lowered the score.")
-                }
                 return insights;
             }
 
@@ -1424,14 +1380,38 @@
             const analyzeBtn = document.getElementById('analyze-btn');
             analyzeBtn.disabled = true;
             analyzeBtn.innerHTML = 'Analyzing... <div class="spinner"></div>';
-
+            
             try {
+                await Transcriber.getInstance((progress) => {
+                     for (const [i, voice] of voices.entries()) {
+                        const scoreEl = document.getElementById(`score-value-${i}`);
+                        if (scoreEl && !scoreEl.classList.contains('analyzed')) {
+                           scoreEl.textContent = `Loading model... ${Math.round(progress.progress)}%`;
+                        }
+                    }
+                });
+
                 for (const [i, voice] of voices.entries()) {
-                    await analyzeSingleVoice(i);
+                    const scoreEl = document.getElementById(`score-value-${i}`);
+                    if (!scoreEl.classList.contains('analyzed')) {
+                         try {
+                            await performFullAnalysis(voice, i);
+                         } catch (e) {
+                            console.error(`Error analyzing ${voice.title}:`, e);
+                            scoreEl.textContent = 'Error';
+                            scoreEl.style.color = '#e74c3c';
+                        }
+                    }
                 }
             } catch (error) {
-                console.error("An error occurred during bulk analysis:", error);
-                alert("An error occurred during the analysis process. Check the console for details.");
+                console.error("Failed to initialize the transcriber model:", error);
+                alert("Could not load the analysis model. Please refresh and try again.");
+                for (const [i, voice] of voices.entries()) {
+                     const scoreEl = document.getElementById(`score-value-${i}`);
+                     if (scoreEl && !scoreEl.classList.contains('analyzed')) {
+                        scoreEl.textContent = 'Model load failed';
+                     }
+                }
             } finally {
                 analysisInProgress = false;
                 analyzeBtn.disabled = false;
