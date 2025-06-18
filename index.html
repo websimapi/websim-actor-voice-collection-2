@@ -295,6 +295,17 @@
             margin: 10px 0;
         }
 
+        .score-details .transcribed-text-container {
+            font-style: italic;
+            padding: 8px 12px;
+            background: rgba(0,0,0,0.25);
+            border-radius: 6px;
+            border-left: 3px solid #ff6b6b;
+            margin: 8px 0 12px;
+            font-size: 0.9em;
+            color: rgba(255,255,255,0.9);
+        }
+
         .score-details .metric-list {
             list-style-type: none;
             padding-left: 10px;
@@ -857,14 +868,20 @@
 
                              <div class="analysis-breakdown" style="margin-top: 15px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.2);">
                                 <p><strong>Original Sample Analysis (Score: <span id="original-score-${index}">-</span>)</strong></p>
-                                 <p><em>Transcribed:</em> <span id="transcribed-text-${index}"></span></p>
+                                 <p><em>Transcribed Text:</em></p>
+                                 <div class="transcribed-text-container"><span id="transcribed-text-${index}">...</span></div>
                                  <p><strong>Score Breakdown:</strong></p>
                                  <ul class="metric-list" id="detailed-scores-${index}"></ul>
                              </div>
                              
                              <div class="analysis-breakdown" style="margin-top: 15px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.2);">
                                  <p><strong>TTS Clone Analysis (Score: <span id="tts-score-${index}">-</span>)</strong></p>
-                                 <p><em>Transcribed:</em> <span id="tts-transcribed-text-${index}"></span></p>
+                                 <div id="tts-audio-player-container-${index}" style="margin-bottom: 10px; display: none;">
+                                     <p><em>Generated Clone Audio:</em></p>
+                                     <audio controls style="width: 100%; height: 35px; margin-top: 5px;"></audio>
+                                 </div>
+                                 <p><em>Transcribed Text:</em></p>
+                                 <div class="transcribed-text-container"><span id="tts-transcribed-text-${index}">...</span></div>
                                  <p><strong>Score Breakdown:</strong></p>
                                  <ul class="metric-list" id="tts-detailed-scores-${index}"></ul>
                              </div>
@@ -1004,6 +1021,15 @@
                     text: voice.script,
                     voice_sample: voiceUrl
                 });
+
+                // --- New: Add audio player for the generated clone ---
+                const ttsAudioContainer = document.getElementById(`tts-audio-player-container-${index}`);
+                if (ttsAudioContainer) {
+                    const ttsAudioPlayer = ttsAudioContainer.querySelector('audio');
+                    ttsAudioPlayer.src = ttsResult.url;
+                    ttsAudioContainer.style.display = 'block';
+                }
+                // --------------------------------------------------------
 
                 scoreEl.innerHTML = 'Analyzing clone... <div class="spinner"></div>';
                 const ttsAudioBuffer = await loadAudioToBuffer(ttsResult.url);
@@ -1471,6 +1497,15 @@
                             text: voice.script,
                             voice_sample: voiceUrl
                         });
+
+                        // --- New: Add audio player for the generated clone ---
+                        const ttsAudioContainer = document.getElementById(`tts-audio-player-container-${i}`);
+                        if (ttsAudioContainer) {
+                            const ttsAudioPlayer = ttsAudioContainer.querySelector('audio');
+                            ttsAudioPlayer.src = ttsResult.url;
+                            ttsAudioContainer.style.display = 'block';
+                        }
+                        // --------------------------------------------------------
 
                         scoreEl.innerHTML = 'Analyzing clone... <div class="spinner"></div>';
                         const ttsAudioBuffer = await loadAudioToBuffer(ttsResult.url);
