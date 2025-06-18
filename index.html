@@ -974,7 +974,7 @@
         // --- Enhanced Voice Sample Scoring System ---
         class VoiceSampleAnalyzer {
             constructor() {
-                this.weights = {
+                this.baseWeights = {
                     transcriptAccuracy: 0.25,
                     audioQuality: 0.20,
                     speechClarity: 0.15,
@@ -982,9 +982,43 @@
                     contentQuality: 0.15,
                     technicalSuitability: 0.10
                 };
+                this.weights = { ...this.baseWeights }; // Initialize with base weights
+            }
+
+            adjustWeightsForWordCount(wordCount) {
+                // This function dynamically adjusts weights based on the number of words.
+                // For longer samples, it reduces the importance of perfect transcript accuracy
+                // and increases the importance of content quality (diversity, complexity, etc.).
+                
+                const base = this.baseWeights;
+                const newWeights = { ...base };
+
+                // Define the amount of weight to shift from accuracy to content.
+                // The shift starts after 10 words and maxes out around 50 words.
+                const shiftFactor = Math.min(1.0, Math.max(0, (wordCount - 10) / 40));
+                
+                // We'll shift up to 10 percentage points (0.10) from accuracy to content.
+                const weightToShift = 0.10 * shiftFactor;
+
+                newWeights.transcriptAccuracy = base.transcriptAccuracy - weightToShift;
+                newWeights.contentQuality = base.contentQuality + weightToShift;
+                
+                // Ensure total weight remains 1.0
+                const currentTotal = Object.values(newWeights).reduce((sum, w) => sum + w, 0);
+                if (Math.abs(1.0 - currentTotal) > 1e-6) {
+                     // This case should ideally not be hit with the current logic, but it's a good safeguard.
+                    console.warn("Weight adjustment resulted in non-unity total. Sticking to base weights.");
+                    this.weights = { ...this.baseWeights };
+                } else {
+                    this.weights = newWeights;
+                }
             }
 
             async analyzeVoiceSample(audioBuffer, expectedScript, transcribedText) {
+                // Adjust weights based on the transcribed word count *before* calculating scores.
+                const wordCount = transcribedText.trim().split(/\s+/).filter(Boolean).length;
+                this.adjustWeightsForWordCount(wordCount);
+
                 const scores = {
                     transcriptAccuracy: this.calculateTranscriptAccuracy(expectedScript, transcribedText),
                     audioQuality: await this.calculateAudioQuality(audioBuffer),
@@ -995,6 +1029,7 @@
                 };
 
                 const weightedScore = Object.keys(scores).reduce((total, key) => {
+                    // Use the dynamically adjusted weights for scoring
                     return total + (scores[key] * (this.weights[key] || 0));
                 }, 0);
 
