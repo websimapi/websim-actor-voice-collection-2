@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -575,7 +576,55 @@
     </div>
 
     <script type="module">
-        import { pipeline } from '@xenova/transformers';
+        import { pipeline, RawImage } from '@xenova/transformers';
+
+        /**
+         * Utility class for audio processing.
+         * This class provides methods to read audio files, resample them to a specific sample rate,
+         * and convert them to a mono-channel Float32Array format suitable for audio processing models.
+         */
+        class AudioUtils {
+            static CHUNK_LENGTH = 30; // 30-second chunks
+            static SAMPLING_RATE = 16000; // Target sampling rate for Whisper model
+
+            /**
+             * Reads an audio file from a URL and returns its raw audio data.
+             * @param {string} url The URL of the audio file.
+             * @returns {Promise<Float32Array>} A promise that resolves to the audio data as a Float32Array.
+             */
+            static async read_audio(url) {
+                const response = await fetchWithProxiesAndRetries(url);
+                const arrayBuffer = await response.arrayBuffer();
+                
+                // Use OfflineAudioContext for robust decoding and resampling.
+                // It's generally more reliable than a live AudioContext for file processing.
+                const audioContext = new OfflineAudioContext({
+                    numberOfChannels: 1,
+                    sampleRate: this.SAMPLING_RATE,
+                    length: 1, // Will be overridden by buffer duration
+                });
+                
+                const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+                
+                // Create an OfflineAudioContext with the correct parameters for resampling
+                const resampledContext = new OfflineAudioContext(
+                    audioBuffer.numberOfChannels,
+                    audioBuffer.duration * this.SAMPLING_RATE,
+                    this.SAMPLING_RATE
+                );
+                
+                const bufferSource = resampledContext.createBufferSource();
+                bufferSource.buffer = audioBuffer;
+                bufferSource.connect(resampledContext.destination);
+                bufferSource.start();
+                
+                const resampledBuffer = await resampledContext.startRendering();
+                
+                // Get the raw audio data from the first channel
+                const audioData = resampledBuffer.getChannelData(0);
+                return audioData;
+            }
+        }
 
         const voices = [
             {
@@ -875,15 +924,16 @@
         }
 
         async function loadAudioToBuffer(url) {
-            const audioCTX = new AudioContext({ sampleRate: 16000 });
+            // This function is now only used for the sample analysis metrics, not for transcription.
+            const audioCTX = new AudioContext(); // Use default sample rate for analysis that doesn't need 16k
             
-            console.log(`[Audio] Starting to load audio buffer for: ${url}`);
+            console.log(`[Audio Analysis] Starting to load audio buffer for: ${url}`);
             const response = await fetchWithProxiesAndRetries(url);
             
-            console.log(`[Audio] Fetch successful. Decoding audio data for: ${response.url}`);
+            console.log(`[Audio Analysis] Fetch successful. Decoding audio data for: ${response.url}`);
             const arrayBuffer = await response.arrayBuffer();
             const decodedData = await audioCTX.decodeAudioData(arrayBuffer);
-            console.log(`[Audio] Successfully decoded audio data for: ${response.url}`);
+            console.log(`[Audio Analysis] Successfully decoded audio data for: ${response.url}`);
             return decodedData;
         }
 
@@ -1055,17 +1105,22 @@
                 
                 // --- Part 2: Analyze Original Sample ---
                 scoreEl.innerHTML = 'Analyzing original... <div class="spinner"></div>';
-                const originalAudioBuffer = await loadAudioToBuffer(voice.file);
-                const originalAudioData = originalAudioBuffer.getChannelData(0);
+                console.log(`[Audio] Reading and resampling original audio: ${voice.file}`);
+                const originalAudioData = await AudioUtils.read_audio(voice.file);
+                console.log(`[Audio] Original audio processed successfully. Length: ${originalAudioData.length}`);
 
                 console.log(`[Transcription] Starting transcription for original audio: ${voice.title}`);
                 scoreEl.innerHTML = 'Transcribing original... <div class="spinner"></div>';
-                const originalTranscriptionResult = await transcriber(originalAudioData, { language: 'english', task: 'transcribe' });
+                const originalTranscriptionResult = await transcriber(originalAudioData, {
+                    language: 'english',
+                    task: 'transcribe',
+                    chunk_length_s: AudioUtils.CHUNK_LENGTH,
+                });
                 console.log(`[Transcription] Finished transcription for original audio. Result:`, originalTranscriptionResult);
                 const originalTranscript = originalTranscriptionResult.text.trim();
                 console.log(`[Transcription] Extracted transcript: "${originalTranscript}"`);
 
-                const originalAnalysis = await analyzer.analyzeVoiceSample(originalAudioBuffer, voice.script, originalTranscript, { isTTSAnalysis: false });
+                const originalAnalysis = await analyzer.analyzeVoiceSample(originalAudioData, voice.script, originalTranscript, { isTTSAnalysis: false });
 
                 // --- Part 3: Generate and Analyze TTS Clone ---
                 scoreEl.innerHTML = 'Generating clone... <div class="spinner"></div>';
@@ -1085,17 +1140,22 @@
                 // --------------------------------------------------------
 
                 scoreEl.innerHTML = 'Analyzing clone... <div class="spinner"></div>';
-                const ttsAudioBuffer = await loadAudioToBuffer(ttsResult.url);
-                const ttsAudioData = ttsAudioBuffer.getChannelData(0);
+                console.log(`[Audio] Reading and resampling TTS clone audio: ${ttsResult.url}`);
+                const ttsAudioData = await AudioUtils.read_audio(ttsResult.url);
+                console.log(`[Audio] TTS clone audio processed successfully. Length: ${ttsAudioData.length}`);
 
                 console.log(`[Transcription] Starting transcription for TTS clone: ${voice.title}`);
                 scoreEl.innerHTML = 'Transcribing clone... <div class="spinner"></div>';
-                const ttsTranscriptionResult = await transcriber(ttsAudioData, { language: 'english', task: 'transcribe' });
+                const ttsTranscriptionResult = await transcriber(ttsAudioData, {
+                    language: 'english',
+                    task: 'transcribe',
+                    chunk_length_s: AudioUtils.CHUNK_LENGTH,
+                });
                 console.log(`[Transcription] Finished transcription for TTS clone. Result:`, ttsTranscriptionResult);
                 const ttsTranscript = ttsTranscriptionResult.text.trim();
                 console.log(`[Transcription] Extracted transcript for TTS clone: "${ttsTranscript}"`);
                 
-                const ttsAnalysis = await analyzer.analyzeVoiceSample(ttsAudioBuffer, voice.script, ttsTranscript, { isTTSAnalysis: true });
+                const ttsAnalysis = await analyzer.analyzeVoiceSample(ttsAudioData, voice.script, ttsTranscript, { isTTSAnalysis: true });
 
                 // --- Part 4: Combine and Display Results ---
                 const combinedScore = Math.round((originalAnalysis.overallScore * 0.6) + (ttsAnalysis.overallScore * 0.4));
@@ -1271,10 +1331,13 @@
                 }
             }
 
-            async analyzeVoiceSample(audioBuffer, expectedScript, transcribedText, options = {}) {
+            async analyzeVoiceSample(audioData, expectedScript, transcribedText, options = {}) {
                 // Adjust weights based on the transcribed word count *before* calculating scores.
                 const wordCount = transcribedText.trim().split(/\s+/).filter(Boolean).length;
                 this.adjustWeights(wordCount, options.isTTSAnalysis);
+
+                // For detailed analysis, we still need an AudioBuffer. We can create one from the raw data.
+                const audioBuffer = this.createBufferFromData(audioData, AudioUtils.SAMPLING_RATE);
 
                 const scores = {
                     transcriptAccuracy: this.calculateTranscriptAccuracy(expectedScript, transcribedText),
@@ -1296,6 +1359,14 @@
                     insights: this.generateInsights(scores),
                     weightsUsed: { ...this.weights } // Return a copy of the weights used for this analysis
                 };
+            }
+
+            createBufferFromData(audioData, sampleRate) {
+                 // Create a dummy AudioContext to build the AudioBuffer.
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const buffer = audioContext.createBuffer(1, audioData.length, sampleRate);
+                buffer.copyToChannel(audioData, 0);
+                return buffer;
             }
 
             calculateTranscriptAccuracy(expected, transcribed) {
@@ -1545,17 +1616,22 @@
                     try {
                         // --- Part 2: Analyze Original Sample ---
                         scoreEl.innerHTML = 'Analyzing original... <div class="spinner"></div>';
-                        const originalAudioBuffer = await loadAudioToBuffer(voice.file);
-                        const originalAudioData = originalAudioBuffer.getChannelData(0);
+                        console.log(`[Audio] Reading and resampling original audio: ${voice.file}`);
+                        const originalAudioData = await AudioUtils.read_audio(voice.file);
+                        console.log(`[Audio] Original audio processed successfully. Length: ${originalAudioData.length}`);
 
                         console.log(`[Transcription] Starting transcription for original audio: ${voice.title}`);
                         scoreEl.innerHTML = 'Transcribing original... <div class="spinner"></div>';
-                        const originalTranscriptionResult = await transcriber(originalAudioData, { language: 'english', task: 'transcribe' });
+                        const originalTranscriptionResult = await transcriber(originalAudioData, {
+                            language: 'english',
+                            task: 'transcribe',
+                            chunk_length_s: AudioUtils.CHUNK_LENGTH,
+                        });
                         console.log(`[Transcription] Finished transcription for original audio. Result:`, originalTranscriptionResult);
                         const originalTranscript = originalTranscriptionResult.text.trim();
                         console.log(`[Transcription] Extracted transcript: "${originalTranscript}"`);
 
-                        const originalAnalysis = await analyzer.analyzeVoiceSample(originalAudioBuffer, voice.script, originalTranscript, { isTTSAnalysis: false });
+                        const originalAnalysis = await analyzer.analyzeVoiceSample(originalAudioData, voice.script, originalTranscript, { isTTSAnalysis: false });
 
                         // --- Part 3: Generate and Analyze TTS Clone ---
                         scoreEl.innerHTML = 'Generating clone... <div class="spinner"></div>';
@@ -1575,17 +1651,22 @@
                         // --------------------------------------------------------
 
                         scoreEl.innerHTML = 'Analyzing clone... <div class="spinner"></div>';
-                        const ttsAudioBuffer = await loadAudioToBuffer(ttsResult.url);
-                        const ttsAudioData = ttsAudioBuffer.getChannelData(0);
+                        console.log(`[Audio] Reading and resampling TTS clone audio: ${ttsResult.url}`);
+                        const ttsAudioData = await AudioUtils.read_audio(ttsResult.url);
+                        console.log(`[Audio] TTS clone audio processed successfully. Length: ${ttsAudioData.length}`);
 
                         console.log(`[Transcription] Starting transcription for TTS clone: ${voice.title}`);
                         scoreEl.innerHTML = 'Transcribing clone... <div class="spinner"></div>';
-                        const ttsTranscriptionResult = await transcriber(ttsAudioData, { language: 'english', task: 'transcribe' });
+                        const ttsTranscriptionResult = await transcriber(ttsAudioData, {
+                            language: 'english',
+                            task: 'transcribe',
+                            chunk_length_s: AudioUtils.CHUNK_LENGTH,
+                        });
                         console.log(`[Transcription] Finished transcription for TTS clone. Result:`, ttsTranscriptionResult);
                         const ttsTranscript = ttsTranscriptionResult.text.trim();
                         console.log(`[Transcription] Extracted transcript for TTS clone: "${ttsTranscript}"`);
 
-                        const ttsAnalysis = await analyzer.analyzeVoiceSample(ttsAudioBuffer, voice.script, ttsTranscript, { isTTSAnalysis: true });
+                        const ttsAnalysis = await analyzer.analyzeVoiceSample(ttsAudioData, voice.script, ttsTranscript, { isTTSAnalysis: true });
 
                         // --- Part 4: Combine and Display Results ---
                         const combinedScore = Math.round((originalAnalysis.overallScore * 0.6) + (ttsAnalysis.overallScore * 0.4));
