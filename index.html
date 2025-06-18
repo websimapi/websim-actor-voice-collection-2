@@ -539,7 +539,7 @@
     </div>
 
     <script type="module">
-        import { pipeline, RawAudio } from '@xenova/transformers';
+        import { pipeline } from '@xenova/transformers';
 
         const voices = [
             {
@@ -877,6 +877,20 @@
         }
         window.selectForTTSFromCard = selectForTTSFromCard;
 
+        // A singleton class for the transcriber
+        class Transcriber {
+            static task = 'automatic-speech-recognition';
+            static model = 'Xenova/whisper-tiny.en';
+            static instance = null;
+
+            static async getInstance(progress_callback = null) {
+                if (this.instance === null) {
+                    this.instance = pipeline(this.task, this.model, { progress_callback });
+                }
+                return this.instance;
+            }
+        }
+
         async function generateTTS() {
             const text = document.getElementById('tts-text').value.trim();
             const generateBtn = document.getElementById('generate-tts-btn');
@@ -999,7 +1013,6 @@
                     }
                 });
 
-
                 // 3. Transcribe each voice
                 for (const [i, voice] of voices.entries()) {
                     const scoreEl = document.getElementById(`score-value-${i}`);
@@ -1010,9 +1023,11 @@
                         const response = await fetch(voice.file);
                         const arrayBuffer = await response.arrayBuffer();
                         const audioBuffer = await audioCTX.decodeAudioData(arrayBuffer);
-                        const rawAudio = new RawAudio(audioBuffer.getChannelData(0), audioCTX.sampleRate);
                         
-                        const result = await transcriber(rawAudio, {
+                        // The whisper model expects a Float32Array of 16kHz audio
+                        const audioData = audioBuffer.getChannelData(0);
+                        
+                        const result = await transcriber(audioData, {
                             language: 'english',
                             task: 'transcribe'
                         });
